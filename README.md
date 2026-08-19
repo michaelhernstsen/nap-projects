@@ -22,4 +22,4 @@ npx wrangler dev
 ## Deploy
 
 Cloudflare Workers Builds, auto-deploy ved push til `main` (samme opsætning
-som de andre NAP-repos).
+som de andre NAP-repos). Forbundet 2026-08-19.
