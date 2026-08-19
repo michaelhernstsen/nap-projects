@@ -6,9 +6,12 @@
 <meta name="robots" content="noindex,nofollow">
 <title>NAP Projects</title>
 <style>
-:root{--ink:#191919;--muted:#787774;--faint:#9b9a97;--line:#ebebea;--hover:#f7f7f5;
-  --blue:#1856a8;--bluebg:#e9f0fa;--green:#0d7a4a;--greenbg:#e6f5ec;
-  --amber:#8a6100;--amberbg:#fdf4e0;--red:#c0261e;--redbg:#fdeceb;--gray:#6a6f7a;--graybg:#f0f1f4}
+:root{--ink:#191919;--muted:#787774;--faint:#9b9a97;--line:#e9e9e7;--line2:#f1f1ef;--hover:#f5f5f4;
+  --blue:#0b4a91;--bluebg:#dbeafe;--bluedot:#2f80ed;
+  --green:#116631;--greenbg:#d7f3df;--greendot:#2ea043;
+  --amber:#8a5c00;--amberbg:#fcecc4;--amberdot:#e0a020;
+  --red:#9c1c14;--redbg:#fbdad7;--reddot:#e5484d;
+  --gray:#787774;--graybg:#eeedec;--graydot:#9b9a97}
 *{box-sizing:border-box}
 body{margin:0;background:#fff;color:var(--ink);-webkit-font-smoothing:antialiased;
   font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
@@ -29,20 +32,23 @@ main{max-width:1180px;margin:0 auto;padding:10px 24px 80px}
 .btn:hover{background:var(--hover)}
 .btn.pri{background:var(--ink);color:#fff;border-color:var(--ink)}
 .btn.pri:hover{background:#333}
-details.group{margin-bottom:6px;border-bottom:1px solid var(--line)}
-details.group summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;
-  padding:12px 4px;font-weight:650;font-size:14.5px}
-details.group summary::-webkit-details-marker{display:none}
-details.group summary::before{content:'▾';color:var(--faint);font-size:11px;width:12px}
-details.group:not([open]) summary::before{content:'▸'}
+.group{margin-bottom:26px}
+.grouphead{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;
+  padding:6px 4px;font-weight:650;font-size:14.5px;user-select:none}
+.grouphead .car{color:var(--faint);font-size:11px;width:12px;transition:transform .12s ease}
+.group.collapsed .grouphead .car{transform:rotate(-90deg)}
 .gicon{font-size:16px}
 .gcount{color:var(--faint);font-weight:500;font-size:12.5px}
 .gsp{flex:1}
-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px}
+.tablewrap{border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-top:8px}
+.group.collapsed .tablewrap{display:none}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:#fbfbfa}
 th{text-align:left;font-weight:600;color:var(--faint);font-size:11px;text-transform:uppercase;
-  letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap}
+  letter-spacing:.04em;padding:9px 10px;border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap}
 th:hover{color:var(--muted)}
-td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+td{padding:2px 8px;border-bottom:1px solid var(--line2);vertical-align:middle;height:40px}
+tbody tr:last-child td{border-bottom:none}
 tr.taskrow:hover{background:var(--hover)}
 td.name-cell{min-width:220px}
 .name-wrap{display:flex;align-items:center;gap:2px}
@@ -51,43 +57,53 @@ td.name-cell{min-width:220px}
 tr.taskrow:hover .openbtn{opacity:1}
 .openbtn:hover{background:var(--faint);color:#fff}
 .name-in{border:none;background:transparent;font-size:13.5px;font-weight:500;width:100%;
-  padding:3px 4px;border-radius:5px;color:var(--ink)}
+  padding:5px 4px;border-radius:5px;color:var(--ink)}
 .name-in:hover,.name-in:focus{background:var(--hover);outline:none}
-select.cellsel{border:none;background:transparent;font-size:12px;cursor:pointer;
-  padding:3px 6px;border-radius:20px;font-weight:600;-webkit-appearance:none;appearance:none}
-select.cellsel:hover{filter:brightness(.96)}
-.st-notstarted{background:var(--graybg);color:var(--gray)}
-.st-inprogress{background:var(--bluebg);color:var(--blue)}
-.st-done{background:var(--greenbg);color:var(--green)}
-.pr-low{background:var(--graybg);color:var(--gray)}
-.pr-medium{background:var(--amberbg);color:var(--amber)}
-.pr-high{background:var(--redbg);color:var(--red)}
-.datein{border:none;background:transparent;font-size:12.5px;color:var(--muted);width:112px}
-.datein:hover,.datein:focus{background:var(--hover);border-radius:5px;outline:none}
+
+/* Chips/pills - alt er en knap der aabner et popover, aldrig et nøgent OS-kontrol */
+.pillbtn{border:none;cursor:pointer;font-size:12px;font-weight:650;padding:4px 10px 4px 8px;border-radius:20px;
+  display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.pillbtn:hover{filter:brightness(.96)}
+.pillbtn.empty{background:transparent;color:var(--faint);font-weight:400;padding:4px 6px}
+.pillbtn.empty:hover{background:var(--hover);border-radius:6px}
+.dot{width:6px;height:6px;border-radius:50%;flex:none}
+.personbtn{border:none;background:transparent;cursor:pointer;display:inline-flex;align-items:center;gap:7px;
+  font-size:12.5px;color:var(--ink);padding:4px 6px;border-radius:6px;max-width:100%}
+.personbtn:hover{background:var(--hover)}
+.personbtn.empty{color:var(--faint)}
+.avatar{width:20px;height:20px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700}
+.avatar.sm{width:18px;height:18px;font-size:9.5px}
+.datebtn{border:none;background:transparent;cursor:pointer;font-size:12.5px;color:var(--ink);
+  padding:4px 7px;border-radius:6px}
+.datebtn:hover{background:var(--hover)}
+.datebtn.empty{color:var(--faint)}
+.datebtn.overdue{color:var(--red);font-weight:600}
+
 .tagchip{display:inline-block;background:var(--graybg);color:var(--gray);border-radius:4px;
   padding:2px 7px;font-size:11px;font-weight:500;margin:1px 3px 1px 0}
-.tagsbtn,.depsbtn{cursor:pointer;min-height:22px;display:block}
-.tagsbtn:hover,.depsbtn:hover{background:var(--hover);border-radius:5px}
+.tagsbtn,.depsbtn{cursor:pointer;min-height:22px;display:flex;align-items:center;flex-wrap:wrap;padding:3px 4px;border-radius:6px}
+.tagsbtn:hover,.depsbtn:hover{background:var(--hover)}
 .depnames{font-size:12px;color:var(--muted)}
-.addrow{color:var(--faint);cursor:pointer;padding:7px 8px;font-size:13px}
-.addrow:hover{color:var(--muted)}
+.addrow{color:var(--faint);cursor:pointer;padding:9px 10px;font-size:13px}
+.addrow:hover{color:var(--muted);background:var(--hover)}
+
 .popover{position:absolute;background:#fff;border:1px solid var(--line);border-radius:9px;
-  box-shadow:0 8px 24px rgba(0,0,0,.12);padding:8px;z-index:80;min-width:200px;max-height:260px;overflow:auto}
-.popover label{display:flex;align-items:center;gap:7px;font-size:13px;padding:5px 6px;border-radius:5px;cursor:pointer}
-.popover label:hover{background:var(--hover)}
-.popover input[type=text]{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 7px;
+  box-shadow:0 10px 28px rgba(0,0,0,.14);padding:6px;z-index:80;min-width:190px;max-height:280px;overflow:auto}
+.popitem{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px}
+.popitem:hover{background:var(--hover)}
+.popitem.on{font-weight:650}
+.popover input[type=date]{width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px}
+.popover input[type=text]{width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 8px;
   font-size:12.5px;margin-top:4px}
-.assignee{border:none;background:transparent;font-size:12.5px;color:var(--muted);cursor:pointer;
-  padding:3px 5px;border-radius:5px;width:100%}
-.assignee:hover{background:var(--hover)}
 .empty{color:var(--faint);padding:40px 4px;text-align:center;font-size:13.5px}
 
 /* Task panel - "hver raekke er en side", samme moenster som Notion */
-.backdrop{position:fixed;inset:0;background:rgba(15,15,15,.08);z-index:90;
+.backdrop{position:fixed;inset:0;background:rgba(15,15,15,.1);z-index:90;
   opacity:0;pointer-events:none;transition:opacity .15s ease}
 .backdrop.open{opacity:1;pointer-events:auto}
-.panel{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);background:#fff;z-index:91;
-  box-shadow:-4px 0 24px rgba(0,0,0,.1);transform:translateX(100%);transition:transform .18s cubic-bezier(.2,.8,.2,1);
+.panel{position:fixed;top:0;right:0;bottom:0;width:min(600px,100vw);background:#fff;z-index:91;
+  box-shadow:-6px 0 28px rgba(0,0,0,.12);transform:translateX(100%);transition:transform .18s cubic-bezier(.2,.8,.2,1);
   display:flex;flex-direction:column}
 .panel.open{transform:translateX(0)}
 .panel-head{flex:none;display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
@@ -100,13 +116,12 @@ select.cellsel:hover{filter:brightness(.96)}
 .panel-title{width:100%;border:none;font-size:26px;font-weight:700;letter-spacing:-.01em;
   padding:2px 4px;margin:0 0 18px -4px;border-radius:6px;color:var(--ink)}
 .panel-title:hover,.panel-title:focus{background:var(--hover);outline:none}
-.proprow{display:flex;align-items:center;min-height:32px;font-size:13.5px}
+.proprow{display:flex;align-items:center;min-height:34px;font-size:13.5px}
 .proprow .lab{flex:none;width:120px;color:var(--faint);font-size:13px}
 .proprow .val{flex:1;min-width:0}
-.proprow .val select.cellsel,.proprow .val .assignee{padding-left:0}
-.panel-divider{height:1px;background:var(--line);margin:16px 0}
+.panel-divider{height:1px;background:var(--line);margin:18px 0}
 .desclab{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin-bottom:8px}
-.panel-desc{width:100%;min-height:220px;border:none;resize:vertical;font:14px/1.6 inherit;color:var(--ink);
+.panel-desc{width:100%;min-height:180px;border:none;resize:vertical;font:14px/1.6 inherit;color:var(--ink);
   padding:4px;border-radius:6px}
 .panel-desc:hover,.panel-desc:focus{background:var(--hover);outline:none}
 .panel-desc::placeholder{color:var(--faint)}
@@ -145,13 +160,39 @@ select.cellsel:hover{filter:brightness(.96)}
 let STATE = { projects:[], tasks:[], users:[], tags:[] };
 let sortKey = null, sortDir = 1, filterText = '';
 let openTaskId = null;
+const collapsed = new Set();
 
 const STATUSES = ['Not started','In progress','Done'];
 const PRIOS = ['Low','Medium','High'];
-const stCls = s => 'st-' + (s||'Not started').toLowerCase().replace(/\s+/g,'');
-const prCls = p => p ? 'pr-' + p.toLowerCase() : '';
+const META = {
+  status: {
+    'Not started': { bg:'var(--graybg)', fg:'var(--gray)', dot:'var(--graydot)' },
+    'In progress': { bg:'var(--bluebg)', fg:'var(--blue)', dot:'var(--bluedot)' },
+    'Done':        { bg:'var(--greenbg)', fg:'var(--green)', dot:'var(--greendot)' },
+  },
+  priority: {
+    'Low':    { bg:'var(--graybg)', fg:'var(--gray)', dot:'var(--graydot)' },
+    'Medium': { bg:'var(--amberbg)', fg:'var(--amber)', dot:'var(--amberdot)' },
+    'High':   { bg:'var(--redbg)', fg:'var(--red)', dot:'var(--reddot)' },
+  },
+};
+const AVATAR_PALETTE = [
+  { bg:'#dbeafe', fg:'#0b4a91' }, { bg:'#fbdad7', fg:'#9c1c14' }, { bg:'#d7f3df', fg:'#116631' },
+  { bg:'#fcecc4', fg:'#8a5c00' }, { bg:'#e7ddfb', fg:'#5a3ea6' }, { bg:'#fbdcee', fg:'#a3236f' },
+];
+const MONTHS = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
 
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function avatarColor(name){ let h=0; for(const c of name) h=(h*31+c.charCodeAt(0))>>>0; return AVATAR_PALETTE[h % AVATAR_PALETTE.length]; }
+function formatDate(iso){
+  if(!iso) return '';
+  const [y,m,d] = iso.split('-').map(Number);
+  return d + '. ' + MONTHS[m-1];
+}
+function isOverdue(iso, status){
+  if(!iso || status === 'Done') return false;
+  return iso < new Date().toISOString().slice(0,10);
+}
 
 async function api(path, opts){
   const r = await fetch(path, { headers:{'content-type':'application/json'}, ...opts });
@@ -193,6 +234,38 @@ function sortTasks(list){
   });
 }
 
+/* ---- Genbrugte byggeklodser: pille/person/dato-knapper ---- */
+
+function pillBtn(kind, taskId, value){
+  const m = kind==='status' ? META.status[value||'Not started'] : (value ? META.priority[value] : null);
+  if(!m) return '<button class="pillbtn empty" data-id="'+taskId+'" data-kind="'+kind+'">–</button>';
+  const label = kind==='status' ? (value||'Not started') : value;
+  return '<button class="pillbtn" data-id="'+taskId+'" data-kind="'+kind+'" style="background:'+m.bg+';color:'+m.fg+'">'+
+    '<span class="dot" style="background:'+m.dot+'"></span>'+esc(label)+'</button>';
+}
+function personBtn(taskId, userId){
+  const u = STATE.users.find(x=>x.id===userId);
+  if(!u) return '<button class="personbtn empty" data-id="'+taskId+'">+ Tilføj</button>';
+  const c = avatarColor(u.username);
+  return '<button class="personbtn" data-id="'+taskId+'">'+
+    '<span class="avatar" style="background:'+c.bg+';color:'+c.fg+'">'+esc(u.username[0].toUpperCase())+'</span>'+
+    esc(u.username)+'</button>';
+}
+function dateBtn(taskId, iso, status){
+  if(!iso) return '<button class="datebtn empty" data-id="'+taskId+'">+ Dato</button>';
+  return '<button class="datebtn'+(isOverdue(iso,status)?' overdue':'')+'" data-id="'+taskId+'">'+esc(formatDate(iso))+'</button>';
+}
+
+function bindCellControls(root){
+  root.querySelectorAll('.pillbtn').forEach(b => b.onclick = e => openPillPopover(e, Number(b.dataset.id), b.dataset.kind));
+  root.querySelectorAll('.personbtn').forEach(b => b.onclick = e => openPersonPopover(e, Number(b.dataset.id)));
+  root.querySelectorAll('.datebtn').forEach(b => b.onclick = e => openDatePopover(e, Number(b.dataset.id)));
+  root.querySelectorAll('.tagsbtn').forEach(el => el.onclick = e => openTagsPopover(e, Number(el.dataset.id)));
+  root.querySelectorAll('.depsbtn').forEach(el => el.onclick = e => openDepsPopover(e, Number(el.dataset.id)));
+}
+
+/* ---- Tabellen ---- */
+
 function render(){
   const wrap = document.getElementById('groups');
   if(!STATE.projects.length){
@@ -201,13 +274,19 @@ function render(){
   }
   wrap.innerHTML = STATE.projects.map(p => {
     const tasks = sortTasks(STATE.tasks.filter(t => t.project_id === p.id && matchesFilter(t)));
-    return '<details class="group" open data-pid="' + p.id + '">' +
-      '<summary><span class="gicon">' + esc(p.icon||'📁') + '</span>' + esc(p.name) +
-        '<span class="gcount">' + tasks.length + '</span><span class="gsp"></span></summary>' +
+    const isCollapsed = collapsed.has(p.id);
+    return '<div class="group' + (isCollapsed?' collapsed':'') + '" data-pid="' + p.id + '">' +
+      '<div class="grouphead"><span class="car">▾</span><span class="gicon">' + esc(p.icon||'📁') + '</span>' + esc(p.name) +
+        '<span class="gcount">' + tasks.length + '</span><span class="gsp"></span></div>' +
       renderTable(p, tasks) +
-    '</details>';
+    '</div>';
   }).join('');
 
+  wrap.querySelectorAll('.grouphead').forEach(h => h.onclick = () => {
+    const pid = Number(h.closest('.group').dataset.pid);
+    if(collapsed.has(pid)) collapsed.delete(pid); else collapsed.add(pid);
+    render();
+  });
   wrap.querySelectorAll('[data-th]').forEach(th => th.onclick = () => {
     const k = th.dataset.th;
     sortDir = (sortKey === k) ? -sortDir : 1;
@@ -222,21 +301,8 @@ function render(){
     e.stopPropagation();
     openPanel(Number(btn.dataset.id));
   });
-  wrap.querySelectorAll('.st-select').forEach(sel => {
-    sel.onchange = () => saveTask(Number(sel.dataset.id), { status: sel.value });
-  });
-  wrap.querySelectorAll('.pr-select').forEach(sel => {
-    sel.onchange = () => saveTask(Number(sel.dataset.id), { priority: sel.value || null });
-  });
-  wrap.querySelectorAll('.assignee').forEach(sel => {
-    sel.onchange = () => saveTask(Number(sel.dataset.id), { assignee_id: sel.value ? Number(sel.value) : null });
-  });
-  wrap.querySelectorAll('.datein').forEach(inp => {
-    inp.onchange = () => saveTask(Number(inp.dataset.id), { due_date: inp.value || null });
-  });
-  wrap.querySelectorAll('.tagsbtn').forEach(el => el.onclick = e => openTagsPopover(e, Number(el.dataset.id)));
-  wrap.querySelectorAll('.depsbtn').forEach(el => el.onclick = e => openDepsPopover(e, Number(el.dataset.id)));
   wrap.querySelectorAll('.addrow').forEach(el => el.onclick = () => addTask(Number(el.dataset.pid)));
+  bindCellControls(wrap);
 }
 
 function renderTable(p, tasks){
@@ -246,31 +312,23 @@ function renderTable(p, tasks){
       '<td class="name-cell"><div class="name-wrap">' +
         '<button class="openbtn" data-id="' + t.id + '" title="Åbn opgave">⤢</button>' +
         '<input class="name-in" data-id="' + t.id + '" value="' + esc(t.name) + '"></div></td>' +
-      '<td><select class="cellsel st-select ' + stCls(t.status) + '" data-id="' + t.id + '">' +
-        STATUSES.map(s => '<option value="' + s + '"' + (t.status===s?' selected':'') + '>' + s + '</option>').join('') +
-      '</select></td>' +
-      '<td><select class="assignee" data-id="' + t.id + '"><option value="">–</option>' +
-        STATE.users.map(u => '<option value="' + u.id + '"' + (t.assignee_id===u.id?' selected':'') + '>' + esc(u.username) + '</option>').join('') +
-      '</select></td>' +
-      '<td><input type="date" class="datein" data-id="' + t.id + '" value="' + (t.due_date||'') + '"></td>' +
-      '<td><select class="cellsel pr-select ' + prCls(t.priority) + '" data-id="' + t.id + '">' +
-        '<option value=""' + (!t.priority?' selected':'') + '>–</option>' +
-        PRIOS.map(pr => '<option value="' + pr + '"' + (t.priority===pr?' selected':'') + '>' + pr + '</option>').join('') +
-      '</select></td>' +
+      '<td>' + pillBtn('status', t.id, t.status) + '</td>' +
+      '<td>' + personBtn(t.id, t.assignee_id) + '</td>' +
+      '<td>' + dateBtn(t.id, t.due_date, t.status) + '</td>' +
+      '<td>' + pillBtn('priority', t.id, t.priority) + '</td>' +
       '<td class="tagsbtn" data-id="' + t.id + '">' +
-        (t.tags||[]).map(tid => '<span class="tagchip">' + esc(tagName(tid)) + '</span>').join('') +
-        (t.tags && t.tags.length ? '' : '<span class="depnames">+ tilføj</span>') + '</td>' +
+        ((t.tags||[]).map(tid => '<span class="tagchip">' + esc(tagName(tid)) + '</span>').join('') || '<span class="depnames">+ tilføj</span>') + '</td>' +
       '<td class="depsbtn" data-id="' + t.id + '"><span class="depnames">' +
         ((t.blocked_by||[]).map(taskName).filter(Boolean).join(', ') || '+ tilføj') + '</span></td>' +
       '<td><span class="depnames">' + (blockingNames.join(', ') || '–') + '</span></td>' +
     '</tr>';
   }).join('');
-  return '<table><thead><tr>' +
+  return '<div class="tablewrap"><table><thead><tr>' +
     '<th data-th="name">Task name</th><th data-th="status">Status</th><th data-th="assignee_id">Assignee</th>' +
     '<th data-th="due_date">Due</th><th data-th="priority">Priority</th><th>Tags</th><th>Blocked By</th><th>Is Blocking</th>' +
     '</tr></thead><tbody>' + rows +
     '<tr><td class="addrow" data-pid="' + p.id + '" colspan="8">+ Ny opgave</td></tr>' +
-    '</tbody></table>';
+    '</tbody></table></div>';
 }
 
 /* ---- Task-panel: "hver raekke er en side" ---- */
@@ -281,7 +339,6 @@ function openPanel(taskId){
   document.getElementById('backdrop').classList.add('open');
   document.getElementById('panel').classList.add('open');
 }
-
 function closePanel(){
   openTaskId = null;
   document.getElementById('backdrop').classList.remove('open');
@@ -300,37 +357,22 @@ function renderPanel(taskId){
   titleEl.dataset.id = t.id;
 
   const blockingNames = (t.blocking||[]).map(taskName).filter(Boolean);
-  document.getElementById('panelProps').innerHTML =
-    propRow('Status', '<select class="cellsel st-select ' + stCls(t.status) + '" data-id="' + t.id + '">' +
-      STATUSES.map(s => '<option value="' + s + '"' + (t.status===s?' selected':'') + '>' + s + '</option>').join('') + '</select>') +
-    propRow('Assignee', '<select class="assignee" data-id="' + t.id + '"><option value="">–</option>' +
-      STATE.users.map(u => '<option value="' + u.id + '"' + (t.assignee_id===u.id?' selected':'') + '>' + esc(u.username) + '</option>').join('') + '</select>') +
-    propRow('Due', '<input type="date" class="datein" data-id="' + t.id + '" value="' + (t.due_date||'') + '">') +
-    propRow('Priority', '<select class="cellsel pr-select ' + prCls(t.priority) + '" data-id="' + t.id + '">' +
-      '<option value=""' + (!t.priority?' selected':'') + '>–</option>' +
-      PRIOS.map(pr => '<option value="' + pr + '"' + (t.priority===pr?' selected':'') + '>' + pr + '</option>').join('') + '</select>') +
+  const propsEl = document.getElementById('panelProps');
+  propsEl.innerHTML =
+    propRow('Status', pillBtn('status', t.id, t.status)) +
+    propRow('Assignee', personBtn(t.id, t.assignee_id)) +
+    propRow('Due', dateBtn(t.id, t.due_date, t.status)) +
+    propRow('Priority', pillBtn('priority', t.id, t.priority)) +
     propRow('Tags', '<span class="tagsbtn" data-id="' + t.id + '">' +
       ((t.tags||[]).map(tid => '<span class="tagchip">' + esc(tagName(tid)) + '</span>').join('') || '<span class="depnames">+ tilføj</span>') + '</span>') +
     propRow('Blocked By', '<span class="depsbtn" data-id="' + t.id + '"><span class="depnames">' +
       ((t.blocked_by||[]).map(taskName).filter(Boolean).join(', ') || '+ tilføj') + '</span></span>') +
     propRow('Is Blocking', '<span class="depnames">' + (blockingNames.join(', ') || '–') + '</span>');
+  bindCellControls(propsEl);
 
   const descEl = document.getElementById('panelDesc');
   if(document.activeElement !== descEl) descEl.value = t.description || '';
   descEl.dataset.id = t.id;
-
-  document.getElementById('panelProps').querySelectorAll('.st-select').forEach(sel =>
-    sel.onchange = () => saveTask(Number(sel.dataset.id), { status: sel.value }));
-  document.getElementById('panelProps').querySelectorAll('.pr-select').forEach(sel =>
-    sel.onchange = () => saveTask(Number(sel.dataset.id), { priority: sel.value || null }));
-  document.getElementById('panelProps').querySelectorAll('.assignee').forEach(sel =>
-    sel.onchange = () => saveTask(Number(sel.dataset.id), { assignee_id: sel.value ? Number(sel.value) : null }));
-  document.getElementById('panelProps').querySelectorAll('.datein').forEach(inp =>
-    inp.onchange = () => saveTask(Number(inp.dataset.id), { due_date: inp.value || null }));
-  document.getElementById('panelProps').querySelectorAll('.tagsbtn').forEach(el =>
-    el.onclick = e => openTagsPopover(e, Number(el.dataset.id)));
-  document.getElementById('panelProps').querySelectorAll('.depsbtn').forEach(el =>
-    el.onclick = e => openDepsPopover(e, Number(el.dataset.id)));
 }
 
 function propRow(label, valueHtml){
@@ -350,7 +392,75 @@ document.getElementById('panelClose').onclick = closePanel;
 document.getElementById('backdrop').onclick = closePanel;
 document.addEventListener('keydown', e => { if(e.key === 'Escape' && openTaskId != null) closePanel(); });
 
+/* ---- Popovers ---- */
+
 function closePopover(){ document.querySelectorAll('.popover').forEach(p => p.remove()); }
+function placePopover(pop, e){
+  pop.style.position = 'absolute';
+  document.body.appendChild(pop);
+  let x = e.pageX, y = e.pageY;
+  const vw = window.innerWidth + window.scrollX;
+  if(x + pop.offsetWidth > vw - 10) x = vw - pop.offsetWidth - 10;
+  pop.style.left = x + 'px'; pop.style.top = y + 'px';
+}
+
+function openPillPopover(e, taskId, kind){
+  e.stopPropagation(); closePopover();
+  const t = STATE.tasks.find(x=>x.id===taskId);
+  const current = kind==='status' ? (t.status||'Not started') : t.priority;
+  const options = kind==='status' ? STATUSES : PRIOS;
+  const meta = META[kind];
+  const pop = document.createElement('div');
+  pop.className = 'popover';
+  let html = kind==='priority'
+    ? '<div class="popitem' + (!current?' on':'') + '" data-v=""><span class="dot" style="background:var(--graydot)"></span>Ingen</div>'
+    : '';
+  html += options.map(o => '<div class="popitem' + (o===current?' on':'') + '" data-v="' + o + '">' +
+    '<span class="dot" style="background:' + meta[o].dot + '"></span>' + o + '</div>').join('');
+  pop.innerHTML = html;
+  placePopover(pop, e);
+  pop.querySelectorAll('.popitem').forEach(item => item.onclick = () => {
+    const v = item.dataset.v;
+    saveTask(taskId, kind==='status' ? { status: v } : { priority: v || null });
+    closePopover();
+  });
+}
+
+function openPersonPopover(e, taskId){
+  e.stopPropagation(); closePopover();
+  const t = STATE.tasks.find(x=>x.id===taskId);
+  const pop = document.createElement('div');
+  pop.className = 'popover';
+  let html = '<div class="popitem' + (!t.assignee_id?' on':'') + '" data-v=""><span class="avatar sm" style="background:var(--graybg);color:var(--faint)">–</span>Ingen</div>';
+  html += STATE.users.map(u => {
+    const c = avatarColor(u.username);
+    return '<div class="popitem' + (u.id===t.assignee_id?' on':'') + '" data-v="' + u.id + '">' +
+      '<span class="avatar sm" style="background:' + c.bg + ';color:' + c.fg + '">' + esc(u.username[0].toUpperCase()) + '</span>' +
+      esc(u.username) + '</div>';
+  }).join('');
+  pop.innerHTML = html;
+  placePopover(pop, e);
+  pop.querySelectorAll('.popitem').forEach(item => item.onclick = () => {
+    const v = item.dataset.v;
+    saveTask(taskId, { assignee_id: v ? Number(v) : null });
+    closePopover();
+  });
+}
+
+function openDatePopover(e, taskId){
+  e.stopPropagation(); closePopover();
+  const t = STATE.tasks.find(x=>x.id===taskId);
+  const pop = document.createElement('div');
+  pop.className = 'popover';
+  pop.innerHTML = '<input type="date" value="' + (t.due_date||'') + '">' +
+    (t.due_date ? '<div class="popitem clear">Fjern dato</div>' : '');
+  placePopover(pop, e);
+  const inp = pop.querySelector('input');
+  inp.focus();
+  inp.onchange = () => { saveTask(taskId, { due_date: inp.value || null }); closePopover(); };
+  const clr = pop.querySelector('.clear');
+  if(clr) clr.onclick = () => { saveTask(taskId, { due_date: null }); closePopover(); };
+}
 
 function openTagsPopover(e, taskId){
   e.stopPropagation(); closePopover();
@@ -358,11 +468,10 @@ function openTagsPopover(e, taskId){
   const mine = new Set(t.tags||[]);
   const pop = document.createElement('div');
   pop.className = 'popover';
-  pop.style.left = e.pageX + 'px'; pop.style.top = e.pageY + 'px'; pop.style.position = 'absolute';
   pop.innerHTML = STATE.tags.map(tag =>
-    '<label><input type="checkbox" value="' + tag.id + '"' + (mine.has(tag.id)?' checked':'') + '>' + esc(tag.name) + '</label>').join('') +
+    '<label class="popitem"><input type="checkbox" value="' + tag.id + '"' + (mine.has(tag.id)?' checked':'') + '>' + esc(tag.name) + '</label>').join('') +
     '<input type="text" placeholder="Ny tag + Enter">';
-  document.body.appendChild(pop);
+  placePopover(pop, e);
   pop.querySelectorAll('input[type=checkbox]').forEach(cb => cb.onchange = async () => {
     const ids = [...pop.querySelectorAll('input[type=checkbox]:checked')].map(x=>Number(x.value));
     await saveTask(taskId, { tags: ids });
@@ -386,11 +495,10 @@ function openDepsPopover(e, taskId){
   const others = STATE.tasks.filter(x => x.project_id === t.project_id && x.id !== taskId);
   const pop = document.createElement('div');
   pop.className = 'popover';
-  pop.style.left = e.pageX + 'px'; pop.style.top = e.pageY + 'px'; pop.style.position = 'absolute';
   pop.innerHTML = others.length
-    ? others.map(o => '<label><input type="checkbox" value="' + o.id + '"' + (mine.has(o.id)?' checked':'') + '>' + esc(o.name) + '</label>').join('')
+    ? others.map(o => '<label class="popitem"><input type="checkbox" value="' + o.id + '"' + (mine.has(o.id)?' checked':'') + '>' + esc(o.name) + '</label>').join('')
     : '<div class="depnames" style="padding:6px">Ingen andre opgaver i projektet</div>';
-  document.body.appendChild(pop);
+  placePopover(pop, e);
   pop.querySelectorAll('input[type=checkbox]').forEach(cb => cb.onchange = async () => {
     const ids = [...pop.querySelectorAll('input[type=checkbox]:checked')].map(x=>Number(x.value));
     await saveTask(taskId, { blocked_by: ids });
