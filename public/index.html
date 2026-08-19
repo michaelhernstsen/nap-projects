@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>NAP Projects</title>
+<style>
+:root{--ink:#191919;--muted:#787774;--faint:#9b9a97;--line:#ebebea;--hover:#f7f7f5;
+  --blue:#1856a8;--bluebg:#e9f0fa;--green:#0d7a4a;--greenbg:#e6f5ec;
+  --amber:#8a6100;--amberbg:#fdf4e0;--red:#c0261e;--redbg:#fdeceb;--gray:#6a6f7a;--graybg:#f0f1f4}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);-webkit-font-smoothing:antialiased;
+  font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.top{max-width:1180px;margin:0 auto;padding:24px 24px 10px;display:flex;align-items:center;gap:10px}
+.mark{font-size:20px}
+.top .t{font-weight:700;font-size:15px}
+.top .s{color:var(--faint);font-size:13px}
+.top .sp{flex:1}
+.top .who{display:flex;align-items:center;gap:16px;font-size:12.5px;color:var(--muted)}
+.top .who a{color:var(--muted);text-decoration:none}
+.top .who a:hover{color:var(--ink);text-decoration:underline}
+main{max-width:1180px;margin:0 auto;padding:10px 24px 80px}
+.toolbar{display:flex;align-items:center;gap:10px;margin:14px 0 22px}
+.toolbar input[type=search]{flex:1;max-width:280px;padding:7px 10px;border:1px solid var(--line);
+  border-radius:7px;font-size:13px;background:var(--hover)}
+.btn{padding:7px 13px;border-radius:7px;border:1px solid var(--line);background:#fff;
+  font-size:13px;font-weight:500;cursor:pointer;color:var(--ink)}
+.btn:hover{background:var(--hover)}
+.btn.pri{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.pri:hover{background:#333}
+details.group{margin-bottom:6px;border-bottom:1px solid var(--line)}
+details.group summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;
+  padding:12px 4px;font-weight:650;font-size:14.5px}
+details.group summary::-webkit-details-marker{display:none}
+details.group summary::before{content:'▾';color:var(--faint);font-size:11px;width:12px}
+details.group:not([open]) summary::before{content:'▸'}
+.gicon{font-size:16px}
+.gcount{color:var(--faint);font-weight:500;font-size:12.5px}
+.gsp{flex:1}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px}
+th{text-align:left;font-weight:600;color:var(--faint);font-size:11px;text-transform:uppercase;
+  letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap}
+th:hover{color:var(--muted)}
+td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr.taskrow:hover{background:var(--hover)}
+td.name-cell{min-width:220px}
+.name-in{border:none;background:transparent;font-size:13.5px;font-weight:500;width:100%;
+  padding:3px 4px;border-radius:5px;color:var(--ink)}
+.name-in:hover,.name-in:focus{background:var(--hover);outline:none}
+select.cellsel{border:none;background:transparent;font-size:12px;cursor:pointer;
+  padding:3px 6px;border-radius:20px;font-weight:600;-webkit-appearance:none;appearance:none}
+select.cellsel:hover{filter:brightness(.96)}
+.st-notstarted{background:var(--graybg);color:var(--gray)}
+.st-inprogress{background:var(--bluebg);color:var(--blue)}
+.st-done{background:var(--greenbg);color:var(--green)}
+.pr-low{background:var(--graybg);color:var(--gray)}
+.pr-medium{background:var(--amberbg);color:var(--amber)}
+.pr-high{background:var(--redbg);color:var(--red)}
+.datein{border:none;background:transparent;font-size:12.5px;color:var(--muted);width:112px}
+.datein:hover,.datein:focus{background:var(--hover);border-radius:5px;outline:none}
+.tagchip{display:inline-block;background:var(--graybg);color:var(--gray);border-radius:4px;
+  padding:2px 7px;font-size:11px;font-weight:500;margin:1px 3px 1px 0}
+.tagsbtn,.depsbtn{cursor:pointer;min-height:22px;display:block}
+.tagsbtn:hover,.depsbtn:hover{background:var(--hover);border-radius:5px}
+.depnames{font-size:12px;color:var(--muted)}
+.addrow{color:var(--faint);cursor:pointer;padding:7px 8px;font-size:13px}
+.addrow:hover{color:var(--muted)}
+.popover{position:absolute;background:#fff;border:1px solid var(--line);border-radius:9px;
+  box-shadow:0 8px 24px rgba(0,0,0,.12);padding:8px;z-index:50;min-width:200px;max-height:260px;overflow:auto}
+.popover label{display:flex;align-items:center;gap:7px;font-size:13px;padding:5px 6px;border-radius:5px;cursor:pointer}
+.popover label:hover{background:var(--hover)}
+.popover input[type=text]{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 7px;
+  font-size:12.5px;margin-top:4px}
+.assignee{border:none;background:transparent;font-size:12.5px;color:var(--muted);cursor:pointer;
+  padding:3px 5px;border-radius:5px;width:100%}
+.assignee:hover{background:var(--hover)}
+.empty{color:var(--faint);padding:40px 4px;text-align:center;font-size:13.5px}
+</style>
+</head>
+<body>
+<div class="top">
+  <span class="mark">🗂️</span><span class="t">NAP</span><span class="s">Projects</span>
+  <div class="sp"></div>
+  <div class="who" id="who"></div>
+</div>
+<main>
+  <div class="toolbar">
+    <input type="search" id="search" placeholder="Søg i opgaver…">
+    <div class="sp"></div>
+    <button class="btn" id="newProject">+ Nyt projekt</button>
+  </div>
+  <div id="groups"></div>
+</main>
+
+<script>
+let STATE = { projects:[], tasks:[], users:[], tags:[] };
+let sortKey = null, sortDir = 1, filterText = '';
+
+const STATUSES = ['Not started','In progress','Done'];
+const PRIOS = ['Low','Medium','High'];
+const stCls = s => 'st-' + (s||'Not started').toLowerCase().replace(/\s+/g,'');
+const prCls = p => p ? 'pr-' + p.toLowerCase() : '';
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function api(path, opts){
+  const r = await fetch(path, { headers:{'content-type':'application/json'}, ...opts });
+  if(r.status === 401){ location.href = '/login'; throw new Error('ikke logget ind'); }
+  if(!r.ok) throw new Error('API-fejl ' + r.status);
+  return r.status === 204 ? null : r.json();
+}
+
+async function loadAll(){
+  const [me, all] = await Promise.all([ api('/api/me'), api('/api/all') ]);
+  STATE = all;
+  document.getElementById('who').innerHTML =
+    '<span>' + esc(me.username) + '</span>' +
+    (me.isAdmin ? '<a href="/admin/users">Administrer brugere</a>' : '') +
+    '<a href="/account/password">Skift adgangskode</a>' +
+    '<a href="/logout">Log ud</a>';
+  render();
+}
+
+function userName(id){ const u = STATE.users.find(u=>u.id===id); return u ? u.username : ''; }
+function taskName(id){ const t = STATE.tasks.find(t=>t.id===id); return t ? t.name : '?'; }
+function tagName(id){ const t = STATE.tags.find(t=>t.id===id); return t ? t.name : ''; }
+
+function matchesFilter(t){
+  if(!filterText) return true;
+  const hay = [t.name, userName(t.assignee_id), ...(t.tags||[]).map(tagName)].join(' ').toLowerCase();
+  return hay.includes(filterText.toLowerCase());
+}
+
+function sortTasks(list){
+  if(!sortKey) return list;
+  return [...list].sort((a,b)=>{
+    let av = a[sortKey], bv = b[sortKey];
+    if(sortKey === 'assignee_id'){ av = userName(av); bv = userName(bv); }
+    av = av==null?'':av; bv = bv==null?'':bv;
+    return av < bv ? -sortDir : av > bv ? sortDir : 0;
+  });
+}
+
+function render(){
+  const wrap = document.getElementById('groups');
+  if(!STATE.projects.length){
+    wrap.innerHTML = '<div class="empty">Ingen projekter endnu — opret det første med "+ Nyt projekt".</div>';
+    return;
+  }
+  wrap.innerHTML = STATE.projects.map(p => {
+    const tasks = sortTasks(STATE.tasks.filter(t => t.project_id === p.id && matchesFilter(t)));
+    return '<details class="group" open data-pid="' + p.id + '">' +
+      '<summary><span class="gicon">' + esc(p.icon||'📁') + '</span>' + esc(p.name) +
+        '<span class="gcount">' + tasks.length + '</span><span class="gsp"></span></summary>' +
+      renderTable(p, tasks) +
+    '</details>';
+  }).join('');
+
+  wrap.querySelectorAll('[data-th]').forEach(th => th.onclick = () => {
+    const k = th.dataset.th;
+    sortDir = (sortKey === k) ? -sortDir : 1;
+    sortKey = k;
+    render();
+  });
+  wrap.querySelectorAll('.name-in').forEach(inp => {
+    inp.onblur = () => saveTask(Number(inp.dataset.id), { name: inp.value.trim() || 'Uden navn' });
+    inp.onkeydown = e => { if(e.key === 'Enter') inp.blur(); };
+  });
+  wrap.querySelectorAll('.st-select').forEach(sel => {
+    sel.onchange = () => saveTask(Number(sel.dataset.id), { status: sel.value });
+  });
+  wrap.querySelectorAll('.pr-select').forEach(sel => {
+    sel.onchange = () => saveTask(Number(sel.dataset.id), { priority: sel.value || null });
+  });
+  wrap.querySelectorAll('.assignee').forEach(sel => {
+    sel.onchange = () => saveTask(Number(sel.dataset.id), { assignee_id: sel.value ? Number(sel.value) : null });
+  });
+  wrap.querySelectorAll('.datein').forEach(inp => {
+    inp.onchange = () => saveTask(Number(inp.dataset.id), { due_date: inp.value || null });
+  });
+  wrap.querySelectorAll('.tagsbtn').forEach(el => el.onclick = e => openTagsPopover(e, Number(el.dataset.id)));
+  wrap.querySelectorAll('.depsbtn').forEach(el => el.onclick = e => openDepsPopover(e, Number(el.dataset.id)));
+  wrap.querySelectorAll('.addrow').forEach(el => el.onclick = () => addTask(Number(el.dataset.pid)));
+}
+
+function renderTable(p, tasks){
+  const rows = tasks.map(t => {
+    const blockingNames = (t.blocking||[]).map(taskName).filter(Boolean);
+    return '<tr class="taskrow">' +
+      '<td class="name-cell"><input class="name-in" data-id="' + t.id + '" value="' + esc(t.name) + '"></td>' +
+      '<td><select class="cellsel st-select ' + stCls(t.status) + '" data-id="' + t.id + '">' +
+        STATUSES.map(s => '<option value="' + s + '"' + (t.status===s?' selected':'') + '>' + s + '</option>').join('') +
+      '</select></td>' +
+      '<td><select class="assignee" data-id="' + t.id + '"><option value="">–</option>' +
+        STATE.users.map(u => '<option value="' + u.id + '"' + (t.assignee_id===u.id?' selected':'') + '>' + esc(u.username) + '</option>').join('') +
+      '</select></td>' +
+      '<td><input type="date" class="datein" data-id="' + t.id + '" value="' + (t.due_date||'') + '"></td>' +
+      '<td><select class="cellsel pr-select ' + prCls(t.priority) + '" data-id="' + t.id + '">' +
+        '<option value=""' + (!t.priority?' selected':'') + '>–</option>' +
+        PRIOS.map(pr => '<option value="' + pr + '"' + (t.priority===pr?' selected':'') + '>' + pr + '</option>').join('') +
+      '</select></td>' +
+      '<td class="tagsbtn" data-id="' + t.id + '">' +
+        (t.tags||[]).map(tid => '<span class="tagchip">' + esc(tagName(tid)) + '</span>').join('') +
+        (t.tags && t.tags.length ? '' : '<span class="depnames">+ tilføj</span>') + '</td>' +
+      '<td class="depsbtn" data-id="' + t.id + '"><span class="depnames">' +
+        ((t.blocked_by||[]).map(taskName).filter(Boolean).join(', ') || '+ tilføj') + '</span></td>' +
+      '<td><span class="depnames">' + (blockingNames.join(', ') || '–') + '</span></td>' +
+    '</tr>';
+  }).join('');
+  return '<table><thead><tr>' +
+    '<th data-th="name">Task name</th><th data-th="status">Status</th><th data-th="assignee_id">Assignee</th>' +
+    '<th data-th="due_date">Due</th><th data-th="priority">Priority</th><th>Tags</th><th>Blocked By</th><th>Is Blocking</th>' +
+    '</tr></thead><tbody>' + rows +
+    '<tr><td class="addrow" data-pid="' + p.id + '" colspan="8">+ Ny opgave</td></tr>' +
+    '</tbody></table>';
+}
+
+function closePopover(){ document.querySelectorAll('.popover').forEach(p => p.remove()); }
+
+function openTagsPopover(e, taskId){
+  e.stopPropagation(); closePopover();
+  const t = STATE.tasks.find(t=>t.id===taskId);
+  const mine = new Set(t.tags||[]);
+  const pop = document.createElement('div');
+  pop.className = 'popover';
+  pop.style.left = e.pageX + 'px'; pop.style.top = e.pageY + 'px'; pop.style.position = 'absolute';
+  pop.innerHTML = STATE.tags.map(tag =>
+    '<label><input type="checkbox" value="' + tag.id + '"' + (mine.has(tag.id)?' checked':'') + '>' + esc(tag.name) + '</label>').join('') +
+    '<input type="text" placeholder="Ny tag + Enter">';
+  document.body.appendChild(pop);
+  pop.querySelectorAll('input[type=checkbox]').forEach(cb => cb.onchange = async () => {
+    const ids = [...pop.querySelectorAll('input[type=checkbox]:checked')].map(x=>Number(x.value));
+    await saveTask(taskId, { tags: ids });
+  });
+  const txt = pop.querySelector('input[type=text]');
+  txt.onkeydown = async e2 => {
+    if(e2.key === 'Enter' && txt.value.trim()){
+      const r = await api('/api/tags', { method:'POST', body: JSON.stringify({ name: txt.value.trim() }) });
+      await loadAll();
+      const ids = [...(STATE.tasks.find(t=>t.id===taskId).tags||[]), r.id];
+      await saveTask(taskId, { tags: ids });
+      closePopover();
+    }
+  };
+}
+
+function openDepsPopover(e, taskId){
+  e.stopPropagation(); closePopover();
+  const t = STATE.tasks.find(t=>t.id===taskId);
+  const mine = new Set(t.blocked_by||[]);
+  const others = STATE.tasks.filter(x => x.project_id === t.project_id && x.id !== taskId);
+  const pop = document.createElement('div');
+  pop.className = 'popover';
+  pop.style.left = e.pageX + 'px'; pop.style.top = e.pageY + 'px'; pop.style.position = 'absolute';
+  pop.innerHTML = others.length
+    ? others.map(o => '<label><input type="checkbox" value="' + o.id + '"' + (mine.has(o.id)?' checked':'') + '>' + esc(o.name) + '</label>').join('')
+    : '<div class="depnames" style="padding:6px">Ingen andre opgaver i projektet</div>';
+  document.body.appendChild(pop);
+  pop.querySelectorAll('input[type=checkbox]').forEach(cb => cb.onchange = async () => {
+    const ids = [...pop.querySelectorAll('input[type=checkbox]:checked')].map(x=>Number(x.value));
+    await saveTask(taskId, { blocked_by: ids });
+  });
+}
+
+document.addEventListener('click', closePopover);
+
+async function saveTask(id, patch){
+  await api('/api/tasks/' + id, { method:'PATCH', body: JSON.stringify(patch) });
+  await loadAll();
+}
+
+async function addTask(projectId){
+  const r = await api('/api/tasks', { method:'POST', body: JSON.stringify({ project_id: projectId, name:'Ny opgave' }) });
+  await loadAll();
+  const inp = document.querySelector('input.name-in[data-id="' + r.id + '"]');
+  if(inp){ inp.focus(); inp.select(); }
+}
+
+document.getElementById('newProject').onclick = async () => {
+  const name = prompt('Projektnavn:');
+  if(!name) return;
+  await api('/api/projects', { method:'POST', body: JSON.stringify({ name }) });
+  await loadAll();
+};
+
+document.getElementById('search').oninput = e => { filterText = e.target.value; render(); };
+
+loadAll().catch(err => {
+  document.getElementById('groups').innerHTML = '<div class="empty">' + esc(err.message) + '</div>';
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+name = "nap-projects"
+main = "worker.js"
+compatibility_date = "2026-08-01"
+
+# Se nap-leverandoer-lagertjek/wrangler.toml - uden denne overskriver
+# "npx wrangler deploy" (koert af Cloudflare Workers Builds ved hvert push)
+# de secrets der er sat via wrangler CLI/dashboard.
+keep_vars = true
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "nap-projects"
+database_id = "5fb3c4cb-0907-4369-ac88-e97656ea78b9"
