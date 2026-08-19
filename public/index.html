@@ -45,6 +45,11 @@ th:hover{color:var(--muted)}
 td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
 tr.taskrow:hover{background:var(--hover)}
 td.name-cell{min-width:220px}
+.name-wrap{display:flex;align-items:center;gap:2px}
+.openbtn{flex:none;width:22px;height:22px;border:none;background:var(--line);color:var(--muted);
+  border-radius:5px;cursor:pointer;font-size:12px;opacity:0;display:flex;align-items:center;justify-content:center}
+tr.taskrow:hover .openbtn{opacity:1}
+.openbtn:hover{background:var(--faint);color:#fff}
 .name-in{border:none;background:transparent;font-size:13.5px;font-weight:500;width:100%;
   padding:3px 4px;border-radius:5px;color:var(--ink)}
 .name-in:hover,.name-in:focus{background:var(--hover);outline:none}
@@ -67,7 +72,7 @@ select.cellsel:hover{filter:brightness(.96)}
 .addrow{color:var(--faint);cursor:pointer;padding:7px 8px;font-size:13px}
 .addrow:hover{color:var(--muted)}
 .popover{position:absolute;background:#fff;border:1px solid var(--line);border-radius:9px;
-  box-shadow:0 8px 24px rgba(0,0,0,.12);padding:8px;z-index:50;min-width:200px;max-height:260px;overflow:auto}
+  box-shadow:0 8px 24px rgba(0,0,0,.12);padding:8px;z-index:80;min-width:200px;max-height:260px;overflow:auto}
 .popover label{display:flex;align-items:center;gap:7px;font-size:13px;padding:5px 6px;border-radius:5px;cursor:pointer}
 .popover label:hover{background:var(--hover)}
 .popover input[type=text]{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 7px;
@@ -76,6 +81,35 @@ select.cellsel:hover{filter:brightness(.96)}
   padding:3px 5px;border-radius:5px;width:100%}
 .assignee:hover{background:var(--hover)}
 .empty{color:var(--faint);padding:40px 4px;text-align:center;font-size:13.5px}
+
+/* Task panel - "hver raekke er en side", samme moenster som Notion */
+.backdrop{position:fixed;inset:0;background:rgba(15,15,15,.08);z-index:90;
+  opacity:0;pointer-events:none;transition:opacity .15s ease}
+.backdrop.open{opacity:1;pointer-events:auto}
+.panel{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);background:#fff;z-index:91;
+  box-shadow:-4px 0 24px rgba(0,0,0,.1);transform:translateX(100%);transition:transform .18s cubic-bezier(.2,.8,.2,1);
+  display:flex;flex-direction:column}
+.panel.open{transform:translateX(0)}
+.panel-head{flex:none;display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
+.panel-close{margin-left:auto;width:28px;height:28px;border:none;background:none;border-radius:6px;
+  cursor:pointer;font-size:15px;color:var(--muted)}
+.panel-close:hover{background:var(--hover)}
+.panel-body{flex:1;overflow-y:auto;padding:14px 48px 60px}
+.crumb{font-size:12.5px;color:var(--faint);margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.panel-icon{font-size:38px;margin-bottom:8px}
+.panel-title{width:100%;border:none;font-size:26px;font-weight:700;letter-spacing:-.01em;
+  padding:2px 4px;margin:0 0 18px -4px;border-radius:6px;color:var(--ink)}
+.panel-title:hover,.panel-title:focus{background:var(--hover);outline:none}
+.proprow{display:flex;align-items:center;min-height:32px;font-size:13.5px}
+.proprow .lab{flex:none;width:120px;color:var(--faint);font-size:13px}
+.proprow .val{flex:1;min-width:0}
+.proprow .val select.cellsel,.proprow .val .assignee{padding-left:0}
+.panel-divider{height:1px;background:var(--line);margin:16px 0}
+.desclab{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin-bottom:8px}
+.panel-desc{width:100%;min-height:220px;border:none;resize:vertical;font:14px/1.6 inherit;color:var(--ink);
+  padding:4px;border-radius:6px}
+.panel-desc:hover,.panel-desc:focus{background:var(--hover);outline:none}
+.panel-desc::placeholder{color:var(--faint)}
 </style>
 </head>
 <body>
@@ -93,9 +127,24 @@ select.cellsel:hover{filter:brightness(.96)}
   <div id="groups"></div>
 </main>
 
+<div class="backdrop" id="backdrop"></div>
+<aside class="panel" id="panel">
+  <div class="panel-head"><button class="panel-close" id="panelClose">✕</button></div>
+  <div class="panel-body">
+    <div class="crumb" id="panelCrumb"></div>
+    <div class="panel-icon">📄</div>
+    <input class="panel-title" id="panelTitle" placeholder="Uden navn">
+    <div id="panelProps"></div>
+    <div class="panel-divider"></div>
+    <div class="desclab">Noter</div>
+    <textarea class="panel-desc" id="panelDesc" placeholder="Skriv beskrivelse, kontekst eller noter til opgaven…"></textarea>
+  </div>
+</aside>
+
 <script>
 let STATE = { projects:[], tasks:[], users:[], tags:[] };
 let sortKey = null, sortDir = 1, filterText = '';
+let openTaskId = null;
 
 const STATUSES = ['Not started','In progress','Done'];
 const PRIOS = ['Low','Medium','High'];
@@ -120,11 +169,13 @@ async function loadAll(){
     '<a href="/account/password">Skift adgangskode</a>' +
     '<a href="/logout">Log ud</a>';
   render();
+  if(openTaskId != null) renderPanel(openTaskId);
 }
 
 function userName(id){ const u = STATE.users.find(u=>u.id===id); return u ? u.username : ''; }
 function taskName(id){ const t = STATE.tasks.find(t=>t.id===id); return t ? t.name : '?'; }
 function tagName(id){ const t = STATE.tags.find(t=>t.id===id); return t ? t.name : ''; }
+function projectOf(t){ return STATE.projects.find(p => p.id === t.project_id); }
 
 function matchesFilter(t){
   if(!filterText) return true;
@@ -167,6 +218,10 @@ function render(){
     inp.onblur = () => saveTask(Number(inp.dataset.id), { name: inp.value.trim() || 'Uden navn' });
     inp.onkeydown = e => { if(e.key === 'Enter') inp.blur(); };
   });
+  wrap.querySelectorAll('.openbtn').forEach(btn => btn.onclick = e => {
+    e.stopPropagation();
+    openPanel(Number(btn.dataset.id));
+  });
   wrap.querySelectorAll('.st-select').forEach(sel => {
     sel.onchange = () => saveTask(Number(sel.dataset.id), { status: sel.value });
   });
@@ -188,7 +243,9 @@ function renderTable(p, tasks){
   const rows = tasks.map(t => {
     const blockingNames = (t.blocking||[]).map(taskName).filter(Boolean);
     return '<tr class="taskrow">' +
-      '<td class="name-cell"><input class="name-in" data-id="' + t.id + '" value="' + esc(t.name) + '"></td>' +
+      '<td class="name-cell"><div class="name-wrap">' +
+        '<button class="openbtn" data-id="' + t.id + '" title="Åbn opgave">⤢</button>' +
+        '<input class="name-in" data-id="' + t.id + '" value="' + esc(t.name) + '"></div></td>' +
       '<td><select class="cellsel st-select ' + stCls(t.status) + '" data-id="' + t.id + '">' +
         STATUSES.map(s => '<option value="' + s + '"' + (t.status===s?' selected':'') + '>' + s + '</option>').join('') +
       '</select></td>' +
@@ -215,6 +272,83 @@ function renderTable(p, tasks){
     '<tr><td class="addrow" data-pid="' + p.id + '" colspan="8">+ Ny opgave</td></tr>' +
     '</tbody></table>';
 }
+
+/* ---- Task-panel: "hver raekke er en side" ---- */
+
+function openPanel(taskId){
+  openTaskId = taskId;
+  renderPanel(taskId);
+  document.getElementById('backdrop').classList.add('open');
+  document.getElementById('panel').classList.add('open');
+}
+
+function closePanel(){
+  openTaskId = null;
+  document.getElementById('backdrop').classList.remove('open');
+  document.getElementById('panel').classList.remove('open');
+}
+
+function renderPanel(taskId){
+  const t = STATE.tasks.find(x=>x.id===taskId);
+  if(!t){ closePanel(); return; }
+  const proj = projectOf(t);
+  document.getElementById('panelCrumb').innerHTML =
+    (proj ? esc(proj.icon||'📁') + ' ' + esc(proj.name) : '') + ' <span style="margin:0 2px">/</span> Opgave';
+
+  const titleEl = document.getElementById('panelTitle');
+  if(document.activeElement !== titleEl) titleEl.value = t.name;
+  titleEl.dataset.id = t.id;
+
+  const blockingNames = (t.blocking||[]).map(taskName).filter(Boolean);
+  document.getElementById('panelProps').innerHTML =
+    propRow('Status', '<select class="cellsel st-select ' + stCls(t.status) + '" data-id="' + t.id + '">' +
+      STATUSES.map(s => '<option value="' + s + '"' + (t.status===s?' selected':'') + '>' + s + '</option>').join('') + '</select>') +
+    propRow('Assignee', '<select class="assignee" data-id="' + t.id + '"><option value="">–</option>' +
+      STATE.users.map(u => '<option value="' + u.id + '"' + (t.assignee_id===u.id?' selected':'') + '>' + esc(u.username) + '</option>').join('') + '</select>') +
+    propRow('Due', '<input type="date" class="datein" data-id="' + t.id + '" value="' + (t.due_date||'') + '">') +
+    propRow('Priority', '<select class="cellsel pr-select ' + prCls(t.priority) + '" data-id="' + t.id + '">' +
+      '<option value=""' + (!t.priority?' selected':'') + '>–</option>' +
+      PRIOS.map(pr => '<option value="' + pr + '"' + (t.priority===pr?' selected':'') + '>' + pr + '</option>').join('') + '</select>') +
+    propRow('Tags', '<span class="tagsbtn" data-id="' + t.id + '">' +
+      ((t.tags||[]).map(tid => '<span class="tagchip">' + esc(tagName(tid)) + '</span>').join('') || '<span class="depnames">+ tilføj</span>') + '</span>') +
+    propRow('Blocked By', '<span class="depsbtn" data-id="' + t.id + '"><span class="depnames">' +
+      ((t.blocked_by||[]).map(taskName).filter(Boolean).join(', ') || '+ tilføj') + '</span></span>') +
+    propRow('Is Blocking', '<span class="depnames">' + (blockingNames.join(', ') || '–') + '</span>');
+
+  const descEl = document.getElementById('panelDesc');
+  if(document.activeElement !== descEl) descEl.value = t.description || '';
+  descEl.dataset.id = t.id;
+
+  document.getElementById('panelProps').querySelectorAll('.st-select').forEach(sel =>
+    sel.onchange = () => saveTask(Number(sel.dataset.id), { status: sel.value }));
+  document.getElementById('panelProps').querySelectorAll('.pr-select').forEach(sel =>
+    sel.onchange = () => saveTask(Number(sel.dataset.id), { priority: sel.value || null }));
+  document.getElementById('panelProps').querySelectorAll('.assignee').forEach(sel =>
+    sel.onchange = () => saveTask(Number(sel.dataset.id), { assignee_id: sel.value ? Number(sel.value) : null }));
+  document.getElementById('panelProps').querySelectorAll('.datein').forEach(inp =>
+    inp.onchange = () => saveTask(Number(inp.dataset.id), { due_date: inp.value || null }));
+  document.getElementById('panelProps').querySelectorAll('.tagsbtn').forEach(el =>
+    el.onclick = e => openTagsPopover(e, Number(el.dataset.id)));
+  document.getElementById('panelProps').querySelectorAll('.depsbtn').forEach(el =>
+    el.onclick = e => openDepsPopover(e, Number(el.dataset.id)));
+}
+
+function propRow(label, valueHtml){
+  return '<div class="proprow"><span class="lab">' + esc(label) + '</span><span class="val">' + valueHtml + '</span></div>';
+}
+
+document.getElementById('panelTitle').onblur = e => {
+  const id = Number(e.target.dataset.id);
+  if(id) saveTask(id, { name: e.target.value.trim() || 'Uden navn' });
+};
+document.getElementById('panelTitle').onkeydown = e => { if(e.key === 'Enter') e.target.blur(); };
+document.getElementById('panelDesc').onblur = e => {
+  const id = Number(e.target.dataset.id);
+  if(id) saveTask(id, { description: e.target.value });
+};
+document.getElementById('panelClose').onclick = closePanel;
+document.getElementById('backdrop').onclick = closePanel;
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && openTaskId != null) closePanel(); });
 
 function closePopover(){ document.querySelectorAll('.popover').forEach(p => p.remove()); }
 

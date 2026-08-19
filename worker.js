@@ -404,7 +404,7 @@ async function hentAlt(db){
   const [projekter, opgaver, brugere, tags, taskTags, deps] = await Promise.all([
     db.prepare(`SELECT id, name, icon, start_date, due_date, effort, archived, position
       FROM projects ORDER BY position, id`).all(),
-    db.prepare(`SELECT id, project_id, name, status, priority, assignee_id, due_date, position
+    db.prepare(`SELECT id, project_id, name, status, priority, assignee_id, due_date, position, description
       FROM tasks ORDER BY position, id`).all(),
     db.prepare(`SELECT id, username FROM users ORDER BY username`).all(),
     db.prepare(`SELECT id, name, color FROM tags ORDER BY name`).all(),
@@ -685,7 +685,7 @@ export default {
         return json({ ok:true });
       }
       const b = await req.json();
-      const felter = ['project_id','name','status','priority','assignee_id','due_date','position'];
+      const felter = ['project_id','name','status','priority','assignee_id','due_date','position','description'];
       const sat = felter.filter(f => f in b);
       if(sat.length){
         await env.DB.prepare(`UPDATE tasks SET ${sat.map(f=>`${f}=?`).join(',')} WHERE id=?`)
