@@ -404,7 +404,7 @@ async function hentAlt(db){
   const [projekter, opgaver, brugere, tags, taskTags, deps] = await Promise.all([
     db.prepare(`SELECT id, name, icon, start_date, due_date, effort, archived, position
       FROM projects ORDER BY position, id`).all(),
-    db.prepare(`SELECT id, project_id, name, status, priority, assignee_id, due_date, position, description
+    db.prepare(`SELECT id, project_id, name, status, priority, assignee_id, due_date, position, description, parent_task_id
       FROM tasks ORDER BY position, id`).all(),
     db.prepare(`SELECT id, username FROM users ORDER BY username`).all(),
     db.prepare(`SELECT id, name, color FROM tags ORDER BY name`).all(),
@@ -670,22 +670,38 @@ export default {
 
     if(url.pathname === '/api/tasks' && req.method === 'POST'){
       const b = await req.json();
-      const r = await env.DB.prepare(`INSERT INTO tasks (project_id, name, status, priority, assignee_id, due_date, created_at, created_by)
-        VALUES (?,?,?,?,?,?,datetime('now'),?)`)
+      const r = await env.DB.prepare(`INSERT INTO tasks (project_id, name, status, priority, assignee_id, due_date, parent_task_id, created_at, created_by)
+        VALUES (?,?,?,?,?,?,?,datetime('now'),?)`)
         .bind(Number(b.project_id), String(b.name||'Ny opgave'), b.status||'Not started', b.priority||null,
-              b.assignee_id||null, b.due_date||null, mig.id).run();
+              b.assignee_id||null, b.due_date||null, b.parent_task_id||null, mig.id).run();
       return json({ id: r.meta.last_row_id });
+    }
+    if(url.pathname.match(/^\/api\/tasks\/\d+\/comments$/)){
+      const taskId = Number(url.pathname.split('/')[3]);
+      if(req.method === 'POST'){
+        const b = await req.json();
+        const body = String(b.body||'').trim();
+        if(!body) return json({ error:'tom kommentar' }, 400);
+        const r = await env.DB.prepare(`INSERT INTO task_comments (task_id, user_id, body, created_at)
+          VALUES (?,?,?,datetime('now'))`).bind(taskId, mig.id, body).run();
+        return json({ id: r.meta.last_row_id });
+      }
+      const r = await env.DB.prepare(`SELECT id, task_id, user_id, body, created_at
+        FROM task_comments WHERE task_id=? ORDER BY id`).bind(taskId).all();
+      return json(r.results || []);
     }
     if(url.pathname.match(/^\/api\/tasks\/\d+$/) && (req.method === 'PATCH' || req.method === 'DELETE')){
       const id = Number(url.pathname.split('/').pop());
       if(req.method === 'DELETE'){
         await env.DB.prepare(`DELETE FROM task_tags WHERE task_id=?`).bind(id).run();
         await env.DB.prepare(`DELETE FROM task_deps WHERE task_id=? OR depends_on_task_id=?`).bind(id, id).run();
+        await env.DB.prepare(`DELETE FROM task_comments WHERE task_id=?`).bind(id).run();
+        await env.DB.prepare(`UPDATE tasks SET parent_task_id=NULL WHERE parent_task_id=?`).bind(id).run();
         await env.DB.prepare(`DELETE FROM tasks WHERE id=?`).bind(id).run();
         return json({ ok:true });
       }
       const b = await req.json();
-      const felter = ['project_id','name','status','priority','assignee_id','due_date','position','description'];
+      const felter = ['project_id','name','status','priority','assignee_id','due_date','position','description','parent_task_id'];
       const sat = felter.filter(f => f in b);
       if(sat.length){
         await env.DB.prepare(`UPDATE tasks SET ${sat.map(f=>`${f}=?`).join(',')} WHERE id=?`)

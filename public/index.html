@@ -125,6 +125,50 @@ tr.taskrow:hover .openbtn{opacity:1}
   padding:4px;border-radius:6px}
 .panel-desc:hover,.panel-desc:focus{background:var(--hover);outline:none}
 .panel-desc::placeholder{color:var(--faint)}
+.panel-desc-view{min-height:60px;padding:4px;border-radius:6px;cursor:text;line-height:1.6}
+.panel-desc-view:hover{background:var(--hover)}
+.panel-desc-view p{margin:0 0 8px}
+.panel-desc-view ul{margin:0 0 8px;padding-left:20px}
+.desc-placeholder{color:var(--faint)}
+
+/* Sub-opgaver */
+.sublab{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin:4px 0 6px}
+.subcount{font-weight:500;text-transform:none;letter-spacing:0}
+.sublist{margin-bottom:4px}
+.subrow{display:flex;align-items:center;gap:9px;padding:6px 4px;border-radius:6px;font-size:13.5px}
+.subrow:hover{background:var(--hover)}
+.subrow.done .subname{color:var(--faint);text-decoration:line-through}
+.subcheck{width:16px;height:16px;flex:none;cursor:pointer}
+.subname{cursor:pointer;flex:1}
+.subadd input{width:100%;border:none;background:transparent;font-size:13.5px;padding:6px 4px;border-radius:6px;color:var(--muted)}
+.subadd input:hover,.subadd input:focus{background:var(--hover);outline:none;color:var(--ink)}
+
+/* Kommentarer */
+.commentlist{margin-bottom:10px}
+.comment{display:flex;gap:9px;padding:8px 2px}
+.chead{font-size:12.5px;margin-bottom:2px}
+.chead b{font-weight:650}
+.ctime{color:var(--faint);margin-left:5px}
+.ctext{font-size:13.5px;line-height:1.5;white-space:pre-wrap}
+.commentadd{display:flex;gap:8px;align-items:flex-start;margin-top:6px}
+.commentadd textarea{flex:1;border:1px solid var(--line);border-radius:7px;padding:8px 10px;font:13.5px/1.5 inherit;
+  resize:none;min-height:36px;color:var(--ink)}
+.commentadd textarea:focus{outline:none;border-color:var(--faint)}
+
+/* View-toggle og board */
+.viewtabs{display:inline-flex;background:var(--hover);border-radius:7px;padding:2px;gap:2px}
+.viewtab{border:none;background:none;padding:5px 12px;font-size:12.5px;font-weight:500;border-radius:5px;
+  cursor:pointer;color:var(--muted)}
+.viewtab.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.board{display:flex;gap:14px;align-items:flex-start;overflow-x:auto;padding-bottom:8px}
+.boardcol{flex:none;width:270px;background:#fbfbfa;border:1px solid var(--line);border-radius:9px;padding:10px}
+.boardhead{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:650;margin-bottom:8px;padding:2px 4px}
+.boardcards{display:flex;flex-direction:column;gap:8px;min-height:20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 11px;cursor:pointer}
+.card:hover{border-color:var(--faint);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.cardproj{font-size:11px;color:var(--faint);margin-bottom:4px}
+.cardname{font-size:13.5px;font-weight:500;margin-bottom:8px}
+.cardmeta{display:flex;align-items:center;gap:2px;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -136,6 +180,10 @@ tr.taskrow:hover .openbtn{opacity:1}
 <main>
   <div class="toolbar">
     <input type="search" id="search" placeholder="Søg i opgaver…">
+    <div class="viewtabs">
+      <button class="viewtab on" id="viewTable">Tabel</button>
+      <button class="viewtab" id="viewBoard">Board</button>
+    </div>
     <div class="sp"></div>
     <button class="btn" id="newProject">+ Nyt projekt</button>
   </div>
@@ -152,7 +200,17 @@ tr.taskrow:hover .openbtn{opacity:1}
     <div id="panelProps"></div>
     <div class="panel-divider"></div>
     <div class="desclab">Noter</div>
-    <textarea class="panel-desc" id="panelDesc" placeholder="Skriv beskrivelse, kontekst eller noter til opgaven…"></textarea>
+    <div class="panel-desc-view" id="panelDescView"></div>
+    <textarea class="panel-desc" id="panelDesc" placeholder="Skriv beskrivelse, kontekst eller noter til opgaven… (understøtter **fed**, *kursiv* og &quot;- &quot; for punktliste)" style="display:none"></textarea>
+    <div class="panel-divider"></div>
+    <div class="sublab">Sub-opgaver</div>
+    <div id="panelSubtasks"></div>
+    <div class="panel-divider"></div>
+    <div class="desclab">Kommentarer</div>
+    <div class="commentlist" id="panelComments"></div>
+    <div class="commentadd">
+      <textarea id="commentInput" placeholder="Skriv en kommentar… (Enter for at sende)"></textarea>
+    </div>
   </div>
 </aside>
 
@@ -160,6 +218,8 @@ tr.taskrow:hover .openbtn{opacity:1}
 let STATE = { projects:[], tasks:[], users:[], tags:[] };
 let sortKey = null, sortDir = 1, filterText = '';
 let openTaskId = null;
+let viewMode = 'table';
+let panelComments = [];
 const collapsed = new Set();
 
 const STATUSES = ['Not started','In progress','Done'];
@@ -192,6 +252,35 @@ function formatDate(iso){
 function isOverdue(iso, status){
   if(!iso || status === 'Done') return false;
   return iso < new Date().toISOString().slice(0,10);
+}
+function relTime(iso){
+  if(!iso) return '';
+  const d = new Date(iso.replace(' ','T') + 'Z');
+  const mins = Math.round((Date.now() - d.getTime())/60000);
+  if(mins < 1) return 'lige nu';
+  if(mins < 60) return mins + ' min siden';
+  const hrs = Math.round(mins/60);
+  if(hrs < 24) return hrs + ' t siden';
+  return Math.round(hrs/24) + ' d siden';
+}
+function renderMarkdownLite(text){
+  if(!text) return '';
+  let html = esc(text);
+  html = html.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  html = html.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, '$1<i>$2</i>');
+  const lines = html.split('\n');
+  let out = [], inList = false;
+  for(const line of lines){
+    if(/^\s*-\s+/.test(line)){
+      if(!inList){ out.push('<ul>'); inList = true; }
+      out.push('<li>' + line.replace(/^\s*-\s+/, '') + '</li>');
+    } else {
+      if(inList){ out.push('</ul>'); inList = false; }
+      if(line.trim()) out.push('<p>' + line + '</p>');
+    }
+  }
+  if(inList) out.push('</ul>');
+  return out.join('');
 }
 
 async function api(path, opts){
@@ -272,8 +361,9 @@ function render(){
     wrap.innerHTML = '<div class="empty">Ingen projekter endnu — opret det første med "+ Nyt projekt".</div>';
     return;
   }
+  if(viewMode === 'board') return renderBoard();
   wrap.innerHTML = STATE.projects.map(p => {
-    const tasks = sortTasks(STATE.tasks.filter(t => t.project_id === p.id && matchesFilter(t)));
+    const tasks = sortTasks(STATE.tasks.filter(t => t.project_id === p.id && !t.parent_task_id && matchesFilter(t)));
     const isCollapsed = collapsed.has(p.id);
     return '<div class="group' + (isCollapsed?' collapsed':'') + '" data-pid="' + p.id + '">' +
       '<div class="grouphead"><span class="car">▾</span><span class="gicon">' + esc(p.icon||'📁') + '</span>' + esc(p.name) +
@@ -331,16 +421,46 @@ function renderTable(p, tasks){
     '</tbody></table></div>';
 }
 
+function renderBoard(){
+  const wrap = document.getElementById('groups');
+  const tasks = STATE.tasks.filter(t => !t.parent_task_id && matchesFilter(t));
+  wrap.innerHTML = '<div class="board">' + STATUSES.map(s => {
+    const col = tasks.filter(t => (t.status||'Not started') === s);
+    return '<div class="boardcol"><div class="boardhead"><span class="dot" style="background:' + META.status[s].dot + '"></span>' + s +
+      '<span class="gcount">' + col.length + '</span></div><div class="boardcards">' +
+      (col.map(renderCard).join('') || '<div class="depnames" style="padding:6px 2px">Ingen opgaver</div>') + '</div></div>';
+  }).join('') + '</div>';
+  wrap.querySelectorAll('.card').forEach(c => c.onclick = () => openPanel(Number(c.dataset.id)));
+  bindCellControls(wrap);
+}
+function renderCard(t){
+  const proj = projectOf(t);
+  return '<div class="card" data-id="' + t.id + '">' +
+    '<div class="cardproj">' + esc(proj ? proj.icon||'📁' : '') + ' ' + esc(proj ? proj.name : '') + '</div>' +
+    '<div class="cardname">' + esc(t.name) + '</div>' +
+    '<div class="cardmeta">' + personBtn(t.id, t.assignee_id) + pillBtn('priority', t.id, t.priority) + dateBtn(t.id, t.due_date, t.status) + '</div>' +
+  '</div>';
+}
+
+document.getElementById('viewTable').onclick = () => { viewMode = 'table'; updateViewTabs(); render(); };
+document.getElementById('viewBoard').onclick = () => { viewMode = 'board'; updateViewTabs(); render(); };
+function updateViewTabs(){
+  document.getElementById('viewTable').classList.toggle('on', viewMode === 'table');
+  document.getElementById('viewBoard').classList.toggle('on', viewMode === 'board');
+}
+
 /* ---- Task-panel: "hver raekke er en side" ---- */
 
 function openPanel(taskId){
   openTaskId = taskId;
   renderPanel(taskId);
+  loadComments(taskId);
   document.getElementById('backdrop').classList.add('open');
   document.getElementById('panel').classList.add('open');
 }
 function closePanel(){
   openTaskId = null;
+  panelComments = [];
   document.getElementById('backdrop').classList.remove('open');
   document.getElementById('panel').classList.remove('open');
 }
@@ -371,8 +491,43 @@ function renderPanel(taskId){
   bindCellControls(propsEl);
 
   const descEl = document.getElementById('panelDesc');
-  if(document.activeElement !== descEl) descEl.value = t.description || '';
+  const descViewEl = document.getElementById('panelDescView');
+  if(document.activeElement !== descEl){
+    descEl.value = t.description || '';
+    descViewEl.innerHTML = renderMarkdownLite(t.description) || '<span class="desc-placeholder">Skriv beskrivelse, kontekst eller noter til opgaven…</span>';
+  }
   descEl.dataset.id = t.id;
+
+  document.getElementById('panelSubtasks').innerHTML = renderSubtasks(t);
+  bindSubtaskControls(t);
+}
+
+function renderSubtasks(t){
+  const kids = STATE.tasks.filter(x => x.parent_task_id === t.id);
+  const done = kids.filter(k => k.status === 'Done').length;
+  return (kids.length ? '<div class="subcount" style="margin-bottom:4px">' + done + ' / ' + kids.length + ' fuldført</div>' : '') +
+    '<div class="sublist">' + kids.map(k =>
+      '<div class="subrow' + (k.status==='Done'?' done':'') + '">' +
+        '<input type="checkbox" class="subcheck" data-id="' + k.id + '"' + (k.status==='Done'?' checked':'') + '>' +
+        '<span class="subname" data-id="' + k.id + '">' + esc(k.name) + '</span>' +
+      '</div>'
+    ).join('') + '</div>' +
+    '<div class="subadd"><input type="text" class="subaddinput" data-parent="' + t.id + '" data-project="' + t.project_id + '" placeholder="+ Tilføj sub-opgave"></div>';
+}
+
+function bindSubtaskControls(t){
+  const el = document.getElementById('panelSubtasks');
+  el.querySelectorAll('.subcheck').forEach(cb => cb.onchange = () =>
+    saveTask(Number(cb.dataset.id), { status: cb.checked ? 'Done' : 'Not started' }));
+  el.querySelectorAll('.subname').forEach(s => s.onclick = () => openPanel(Number(s.dataset.id)));
+  const addInp = el.querySelector('.subaddinput');
+  addInp.onkeydown = async e => {
+    if(e.key === 'Enter' && addInp.value.trim()){
+      await api('/api/tasks', { method:'POST', body: JSON.stringify({
+        project_id: Number(addInp.dataset.project), parent_task_id: Number(addInp.dataset.parent), name: addInp.value.trim() }) });
+      await loadAll();
+    }
+  };
 }
 
 function propRow(label, valueHtml){
@@ -384,9 +539,19 @@ document.getElementById('panelTitle').onblur = e => {
   if(id) saveTask(id, { name: e.target.value.trim() || 'Uden navn' });
 };
 document.getElementById('panelTitle').onkeydown = e => { if(e.key === 'Enter') e.target.blur(); };
+document.getElementById('panelDescView').onclick = () => {
+  document.getElementById('panelDescView').style.display = 'none';
+  const ta = document.getElementById('panelDesc');
+  ta.style.display = 'block';
+  ta.focus();
+};
 document.getElementById('panelDesc').onblur = e => {
   const id = Number(e.target.dataset.id);
   if(id) saveTask(id, { description: e.target.value });
+  e.target.style.display = 'none';
+  document.getElementById('panelDescView').style.display = 'block';
+  document.getElementById('panelDescView').innerHTML = renderMarkdownLite(e.target.value) ||
+    '<span class="desc-placeholder">Skriv beskrivelse, kontekst eller noter til opgaven…</span>';
 };
 document.getElementById('panelClose').onclick = closePanel;
 document.getElementById('backdrop').onclick = closePanel;
@@ -506,6 +671,34 @@ function openDepsPopover(e, taskId){
 }
 
 document.addEventListener('click', closePopover);
+
+/* ---- Kommentarer ---- */
+
+async function loadComments(taskId){
+  panelComments = await api('/api/tasks/' + taskId + '/comments');
+  renderComments();
+}
+function renderComments(){
+  const el = document.getElementById('panelComments');
+  el.innerHTML = panelComments.map(c => {
+    const uname = userName(c.user_id) || '?';
+    const col = avatarColor(uname);
+    return '<div class="comment">' +
+      '<span class="avatar" style="background:' + col.bg + ';color:' + col.fg + '">' + esc(uname[0].toUpperCase()) + '</span>' +
+      '<div><div class="chead"><b>' + esc(uname) + '</b><span class="ctime">' + relTime(c.created_at) + '</span></div>' +
+      '<div class="ctext">' + esc(c.body) + '</div></div></div>';
+  }).join('') || '<div class="depnames">Ingen kommentarer endnu</div>';
+}
+document.getElementById('commentInput').onkeydown = async e => {
+  if(e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    const val = e.target.value.trim();
+    if(!val || openTaskId == null) return;
+    e.target.value = '';
+    await api('/api/tasks/' + openTaskId + '/comments', { method:'POST', body: JSON.stringify({ body: val }) });
+    await loadComments(openTaskId);
+  }
+};
 
 async function saveTask(id, patch){
   await api('/api/tasks/' + id, { method:'PATCH', body: JSON.stringify(patch) });
