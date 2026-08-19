@@ -1,6 +1,8 @@
 name = "nap-projects"
 main = "worker.js"
 compatibility_date = "2026-08-01"
+workers_dev = true
+preview_urls = false
 
 # Se nap-leverandoer-lagertjek/wrangler.toml - uden denne overskriver
 # "npx wrangler deploy" (koert af Cloudflare Workers Builds ved hvert push)
