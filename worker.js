@@ -418,7 +418,7 @@ async function ryddTaskRelationer(env, taskId){
 
 async function hentAlt(db){
   const [projekter, opgaver, brugere, tags, taskTags, deps] = await Promise.all([
-    db.prepare(`SELECT id, name, icon, start_date, due_date, effort, archived, position
+    db.prepare(`SELECT id, name, icon, start_date, due_date, effort, archived, position, description
       FROM projects ORDER BY position, id`).all(),
     db.prepare(`SELECT id, project_id, name, status, priority, assignee_id, due_date, position, description, parent_task_id
       FROM tasks ORDER BY position, id`).all(),
@@ -680,7 +680,7 @@ export default {
         return json({ ok:true });
       }
       const b = await req.json();
-      const felter = ['name','icon','start_date','due_date','effort','archived','position'];
+      const felter = ['name','icon','start_date','due_date','effort','archived','position','description'];
       const sat = felter.filter(f => f in b);
       if(sat.length){
         await env.DB.prepare(`UPDATE projects SET ${sat.map(f=>`${f}=?`).join(',')} WHERE id=?`)

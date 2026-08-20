@@ -37,6 +37,8 @@ main{max-width:1180px;margin:0 auto;padding:10px 24px 80px}
   padding:6px 4px;font-weight:650;font-size:14.5px;user-select:none}
 .grouphead .car{color:var(--faint);font-size:11px;width:12px;transition:transform .12s ease}
 .group.collapsed .grouphead .car{transform:rotate(-90deg)}
+.gopen{display:inline-flex;align-items:center;gap:8px;cursor:pointer;border-radius:6px;padding:2px 4px;margin:-2px -4px}
+.gopen:hover{background:var(--line2)}
 .gicon{font-size:16px}
 .gcount{color:var(--faint);font-weight:500;font-size:12.5px}
 .gsp{flex:1}
@@ -53,13 +55,10 @@ th{text-align:left;font-weight:600;color:var(--faint);font-size:11px;text-transf
 th:hover{color:var(--muted)}
 td{padding:2px 8px;border-bottom:1px solid var(--line2);vertical-align:middle;height:40px}
 tbody tr:last-child td{border-bottom:none}
+tr.taskrow{cursor:pointer}
 tr.taskrow:hover{background:var(--hover)}
 td.name-cell{min-width:220px}
 .name-wrap{display:flex;align-items:center;gap:2px}
-.openbtn{flex:none;width:22px;height:22px;border:none;background:var(--line);color:var(--muted);
-  border-radius:5px;cursor:pointer;font-size:12px;opacity:0;display:flex;align-items:center;justify-content:center}
-tr.taskrow:hover .openbtn{opacity:1}
-.openbtn:hover{background:var(--faint);color:#fff}
 .name-in{border:none;background:transparent;font-size:13.5px;font-weight:500;width:100%;
   padding:5px 4px;border-radius:5px;color:var(--ink)}
 .name-in:hover,.name-in:focus{background:var(--hover);outline:none}
@@ -103,19 +102,21 @@ tr.taskrow:hover .openbtn{opacity:1}
   font-size:12.5px;margin-top:4px}
 .empty{color:var(--faint);padding:40px 4px;text-align:center;font-size:13.5px}
 
-/* Task panel - "hver raekke er en side", samme moenster som Notion */
-.backdrop{position:fixed;inset:0;background:rgba(15,15,15,.1);z-index:90;
+/* Task-/projekt-kort - centreret modal, "hver raekke er en side" */
+.backdrop{position:fixed;inset:0;background:rgba(15,15,15,.28);z-index:90;
   opacity:0;pointer-events:none;transition:opacity .15s ease}
 .backdrop.open{opacity:1;pointer-events:auto}
-.panel{position:fixed;top:0;right:0;bottom:0;width:min(600px,100vw);background:#fff;z-index:91;
-  box-shadow:-6px 0 28px rgba(0,0,0,.12);transform:translateX(100%);transition:transform .18s cubic-bezier(.2,.8,.2,1);
+.panel{position:fixed;top:50%;left:50%;width:min(640px,92vw);max-height:86vh;background:#fff;z-index:95;
+  border-radius:14px;box-shadow:0 28px 64px rgba(0,0,0,.24);
+  transform:translate(-50%,-50%) scale(.97);opacity:0;pointer-events:none;
+  transition:transform .14s cubic-bezier(.2,.8,.2,1),opacity .14s ease;
   display:flex;flex-direction:column}
-.panel.open{transform:translateX(0)}
+.panel.open{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto}
 .panel-head{flex:none;display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
 .panel-close{margin-left:auto;width:28px;height:28px;border:none;background:none;border-radius:6px;
   cursor:pointer;font-size:15px;color:var(--muted)}
 .panel-close:hover{background:var(--hover)}
-.panel-body{flex:1;overflow-y:auto;padding:14px 48px 60px}
+.panel-body{flex:1;min-height:0;overflow-y:auto;padding:8px 40px 40px}
 .crumb{font-size:12.5px;color:var(--faint);margin-bottom:10px;display:flex;align-items:center;gap:5px}
 .panel-icon{font-size:38px;margin-bottom:8px}
 .panel-title{width:100%;border:none;font-size:26px;font-weight:700;letter-spacing:-.01em;
@@ -236,10 +237,26 @@ tr.taskrow:hover .openbtn{opacity:1}
   </div>
 </aside>
 
+<aside class="panel" id="projectPanel">
+  <div class="panel-head"><button class="panel-close" id="projectPanelClose">✕</button></div>
+  <div class="panel-body">
+    <div class="panel-icon" id="ppIcon">📁</div>
+    <input class="panel-title" id="ppTitle" placeholder="Uden navn">
+    <div id="ppProps"></div>
+    <div class="panel-divider"></div>
+    <div class="desclab">Noter</div>
+    <div class="panel-desc-view" id="ppDescView"></div>
+    <textarea class="panel-desc" id="ppDesc" placeholder="Skriv noter, kontekst eller status til projektet…" style="display:none"></textarea>
+  </div>
+</aside>
+
 <script>
 let STATE = { projects:[], tasks:[], users:[], tags:[] };
 let sortKey = null, sortDir = 1, filterText = '';
 let openTaskId = null;
+let openProjectId = null;
+const EFFORTS = ['Small','Medium','Large'];
+const EFFORT_LABEL = { 'Small':'Lille', 'Medium':'Mellem', 'Large':'Stor' };
 let viewMode = 'table';
 let panelComments = [];
 let panelFiles = [];
@@ -327,6 +344,7 @@ async function loadAll(){
     '<a href="/logout">Log ud</a>';
   render();
   if(openTaskId != null) renderPanel(openTaskId);
+  if(openProjectId != null) renderProjectPanel(openProjectId);
 }
 
 function userName(id){ const u = STATE.users.find(u=>u.id===id); return u ? u.username : ''; }
@@ -394,7 +412,8 @@ function render(){
     const tasks = sortTasks(STATE.tasks.filter(t => t.project_id === p.id && !t.parent_task_id && matchesFilter(t)));
     const isCollapsed = collapsed.has(p.id);
     return '<div class="group' + (isCollapsed?' collapsed':'') + '" data-pid="' + p.id + '">' +
-      '<div class="grouphead"><span class="car">▾</span><span class="gicon">' + esc(p.icon||'📁') + '</span>' + esc(p.name) +
+      '<div class="grouphead"><span class="car">▾</span>' +
+        '<span class="gopen" data-pid="' + p.id + '" title="Åbn projekt"><span class="gicon">' + esc(p.icon||'📁') + '</span>' + esc(p.name) + '</span>' +
         '<span class="gcount">' + tasks.length + '</span><span class="gsp"></span>' +
         '<button class="delprojbtn" data-pid="' + p.id + '" title="Slet projekt">🗑</button></div>' +
       renderTable(p, tasks) +
@@ -405,6 +424,10 @@ function render(){
     const pid = Number(h.closest('.group').dataset.pid);
     if(collapsed.has(pid)) collapsed.delete(pid); else collapsed.add(pid);
     render();
+  });
+  wrap.querySelectorAll('.gopen').forEach(el => el.onclick = e => {
+    e.stopPropagation();
+    openProjectPanel(Number(el.dataset.pid));
   });
   wrap.querySelectorAll('.delprojbtn').forEach(b => b.onclick = async e => {
     e.stopPropagation();
@@ -421,13 +444,11 @@ function render(){
     render();
   });
   wrap.querySelectorAll('.name-in').forEach(inp => {
+    inp.onclick = e => e.stopPropagation();
     inp.onblur = () => saveTask(Number(inp.dataset.id), { name: inp.value.trim() || 'Uden navn' });
     inp.onkeydown = e => { if(e.key === 'Enter') inp.blur(); };
   });
-  wrap.querySelectorAll('.openbtn').forEach(btn => btn.onclick = e => {
-    e.stopPropagation();
-    openPanel(Number(btn.dataset.id));
-  });
+  wrap.querySelectorAll('tr.taskrow').forEach(tr => tr.onclick = () => openPanel(Number(tr.dataset.id)));
   wrap.querySelectorAll('.addrow').forEach(el => el.onclick = () => addTask(Number(el.dataset.pid)));
   bindCellControls(wrap);
 }
@@ -435,9 +456,8 @@ function render(){
 function renderTable(p, tasks){
   const rows = tasks.map(t => {
     const blockingNames = (t.blocking||[]).map(taskName).filter(Boolean);
-    return '<tr class="taskrow">' +
+    return '<tr class="taskrow" data-id="' + t.id + '">' +
       '<td class="name-cell"><div class="name-wrap">' +
-        '<button class="openbtn" data-id="' + t.id + '" title="Åbn opgave">⤢</button>' +
         '<input class="name-in" data-id="' + t.id + '" value="' + esc(t.name) + '"></div></td>' +
       '<td>' + pillBtn('status', t.id, t.status) + '</td>' +
       '<td>' + personBtn(t.id, t.assignee_id) + '</td>' +
@@ -593,8 +613,121 @@ document.getElementById('panelDesc').onblur = e => {
     '<span class="desc-placeholder">Skriv beskrivelse, kontekst eller noter til opgaven…</span>';
 };
 document.getElementById('panelClose').onclick = closePanel;
-document.getElementById('backdrop').onclick = closePanel;
-document.addEventListener('keydown', e => { if(e.key === 'Escape' && openTaskId != null) closePanel(); });
+document.getElementById('backdrop').onclick = () => { closePanel(); closeProjectPanel(); };
+document.addEventListener('keydown', e => {
+  if(e.key !== 'Escape') return;
+  if(openTaskId != null) closePanel();
+  if(openProjectId != null) closeProjectPanel();
+});
+
+/* ---- Projekt-panel: "aabn mappen", noter paa projektniveau ---- */
+
+async function saveProject(id, patch){
+  await api('/api/projects/' + id, { method:'PATCH', body: JSON.stringify(patch) });
+  await loadAll();
+}
+
+function openProjectPanel(pid){
+  openProjectId = pid;
+  renderProjectPanel(pid);
+  document.getElementById('backdrop').classList.add('open');
+  document.getElementById('projectPanel').classList.add('open');
+}
+function closeProjectPanel(){
+  openProjectId = null;
+  document.getElementById('backdrop').classList.remove('open');
+  document.getElementById('projectPanel').classList.remove('open');
+}
+
+function projDateBtn(pid, iso, field){
+  if(!iso) return '<button class="datebtn empty" data-pid="' + pid + '" data-field="' + field + '">+ Dato</button>';
+  return '<button class="datebtn" data-pid="' + pid + '" data-field="' + field + '">' + esc(formatDate(iso)) + '</button>';
+}
+function projEffortBtn(pid, value){
+  if(!value) return '<button class="pillbtn empty" data-pid="' + pid + '">–</button>';
+  return '<button class="pillbtn" data-pid="' + pid + '" style="background:var(--graybg);color:var(--gray)">' +
+    '<span class="dot" style="background:var(--graydot)"></span>' + EFFORT_LABEL[value] + '</button>';
+}
+
+function renderProjectPanel(pid){
+  const p = STATE.projects.find(x => x.id === pid);
+  if(!p){ closeProjectPanel(); return; }
+  document.getElementById('ppIcon').textContent = p.icon || '📁';
+
+  const titleEl = document.getElementById('ppTitle');
+  if(document.activeElement !== titleEl) titleEl.value = p.name;
+  titleEl.dataset.id = p.id;
+
+  const propsEl = document.getElementById('ppProps');
+  propsEl.innerHTML =
+    propRow('Startdato', projDateBtn(p.id, p.start_date, 'start_date')) +
+    propRow('Frist', projDateBtn(p.id, p.due_date, 'due_date')) +
+    propRow('Indsats', projEffortBtn(p.id, p.effort));
+  propsEl.querySelectorAll('.datebtn').forEach(b =>
+    b.onclick = e => openProjDatePopover(e, Number(b.dataset.pid), b.dataset.field));
+  propsEl.querySelectorAll('.pillbtn').forEach(b =>
+    b.onclick = e => openEffortPopover(e, Number(b.dataset.pid)));
+
+  const descEl = document.getElementById('ppDesc');
+  const descViewEl = document.getElementById('ppDescView');
+  if(document.activeElement !== descEl){
+    descEl.value = p.description || '';
+    descViewEl.innerHTML = renderMarkdownLite(p.description) || '<span class="desc-placeholder">Skriv noter, kontekst eller status til projektet…</span>';
+  }
+  descEl.dataset.id = p.id;
+}
+
+function openProjDatePopover(e, pid, field){
+  e.stopPropagation(); closePopover();
+  const p = STATE.projects.find(x => x.id === pid);
+  const pop = document.createElement('div');
+  pop.className = 'popover';
+  pop.innerHTML = '<input type="date" value="' + (p[field]||'') + '">' +
+    (p[field] ? '<div class="popitem clear">Fjern dato</div>' : '');
+  placePopover(pop, e);
+  const inp = pop.querySelector('input');
+  inp.focus();
+  inp.onchange = () => { saveProject(pid, { [field]: inp.value || null }); closePopover(); };
+  const clr = pop.querySelector('.clear');
+  if(clr) clr.onclick = () => { saveProject(pid, { [field]: null }); closePopover(); };
+}
+
+function openEffortPopover(e, pid){
+  e.stopPropagation(); closePopover();
+  const p = STATE.projects.find(x => x.id === pid);
+  const pop = document.createElement('div');
+  pop.className = 'popover';
+  let html = '<div class="popitem' + (!p.effort?' on':'') + '" data-v=""><span class="dot" style="background:var(--graydot)"></span>Ingen</div>';
+  html += EFFORTS.map(o => '<div class="popitem' + (o===p.effort?' on':'') + '" data-v="' + o + '">' +
+    '<span class="dot" style="background:var(--graydot)"></span>' + EFFORT_LABEL[o] + '</div>').join('');
+  pop.innerHTML = html;
+  placePopover(pop, e);
+  pop.querySelectorAll('.popitem').forEach(item => item.onclick = () => {
+    saveProject(pid, { effort: item.dataset.v || null });
+    closePopover();
+  });
+}
+
+document.getElementById('ppTitle').onblur = e => {
+  const id = Number(e.target.dataset.id);
+  if(id) saveProject(id, { name: e.target.value.trim() || 'Uden navn' });
+};
+document.getElementById('ppTitle').onkeydown = e => { if(e.key === 'Enter') e.target.blur(); };
+document.getElementById('ppDescView').onclick = () => {
+  document.getElementById('ppDescView').style.display = 'none';
+  const ta = document.getElementById('ppDesc');
+  ta.style.display = 'block';
+  ta.focus();
+};
+document.getElementById('ppDesc').onblur = e => {
+  const id = Number(e.target.dataset.id);
+  if(id) saveProject(id, { description: e.target.value });
+  e.target.style.display = 'none';
+  document.getElementById('ppDescView').style.display = 'block';
+  document.getElementById('ppDescView').innerHTML = renderMarkdownLite(e.target.value) ||
+    '<span class="desc-placeholder">Skriv noter, kontekst eller status til projektet…</span>';
+};
+document.getElementById('projectPanelClose').onclick = closeProjectPanel;
 
 /* ---- Popovers ---- */
 
