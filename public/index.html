@@ -32,22 +32,11 @@ main{max-width:1180px;margin:0 auto;padding:10px 24px 80px}
 .btn:hover{background:var(--hover)}
 .btn.pri{background:var(--ink);color:#fff;border-color:var(--ink)}
 .btn.pri:hover{background:#333}
-.group{margin-bottom:26px}
-.grouphead{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;
-  padding:6px 4px;font-weight:650;font-size:14.5px;user-select:none}
-.grouphead .car{color:var(--faint);font-size:11px;width:12px;transition:transform .12s ease}
-.group.collapsed .grouphead .car{transform:rotate(-90deg)}
 .gopen{display:inline-flex;align-items:center;gap:8px;cursor:pointer;border-radius:6px;padding:2px 4px;margin:-2px -4px}
 .gopen:hover{background:var(--line2)}
 .gicon{font-size:16px}
 .gcount{color:var(--faint);font-weight:500;font-size:12.5px}
-.gsp{flex:1}
-.delprojbtn{flex:none;width:24px;height:24px;border:none;background:none;color:var(--faint);cursor:pointer;
-  border-radius:5px;font-size:13px;opacity:0}
-.group:hover .delprojbtn{opacity:1}
-.delprojbtn:hover{background:var(--redbg);color:var(--red)}
 .tablewrap{border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-top:8px}
-.group.collapsed .tablewrap{display:none}
 table{width:100%;border-collapse:collapse;font-size:13px}
 thead tr{background:#fbfbfa}
 th{text-align:left;font-weight:600;color:var(--faint);font-size:11px;text-transform:uppercase;
@@ -185,9 +174,25 @@ td.name-cell{min-width:220px}
 .boardcards{display:flex;flex-direction:column;gap:8px;min-height:20px}
 .card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 11px;cursor:pointer}
 .card:hover{border-color:var(--faint);box-shadow:0 2px 8px rgba(0,0,0,.06)}
-.cardproj{font-size:11px;color:var(--faint);margin-bottom:4px}
 .cardname{font-size:13.5px;font-weight:500;margin-bottom:8px}
 .cardmeta{display:flex;align-items:center;gap:2px;flex-wrap:wrap}
+
+/* Landingsside: "Mine projektmapper" */
+.folders{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:8px}
+.foldercard{position:relative;background:#fff;border:1px solid var(--line);border-radius:11px;padding:20px;
+  cursor:pointer;text-align:left;transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease}
+.foldercard:hover{border-color:var(--faint);box-shadow:0 4px 14px rgba(0,0,0,.06);transform:translateY(-1px)}
+.foldericon{font-size:30px;margin-bottom:10px}
+.foldername{font-weight:650;font-size:14.5px;margin-bottom:4px}
+.folderstat{color:var(--faint);font-size:12.5px}
+.foldercard .delprojbtn{position:absolute;top:10px;right:10px;width:26px;height:26px;border:none;background:none;
+  color:var(--faint);cursor:pointer;border-radius:6px;font-size:13px;opacity:0}
+.foldercard:hover .delprojbtn{opacity:1}
+.foldercard .delprojbtn:hover{background:var(--redbg);color:var(--red)}
+
+/* Header naar man er inde i ét projekt */
+.projhead{display:flex;align-items:center;gap:10px;margin:6px 0 14px}
+.projhead .gopen{font-weight:650;font-size:16px}
 </style>
 </head>
 <body>
@@ -198,8 +203,9 @@ td.name-cell{min-width:220px}
 </div>
 <main>
   <div class="toolbar">
-    <input type="search" id="search" placeholder="Søg i opgaver…">
-    <div class="viewtabs">
+    <button class="btn" id="backToFolders" style="display:none">← Alle mapper</button>
+    <input type="search" id="search" placeholder="Søg i opgaver…" style="display:none">
+    <div class="viewtabs" id="viewtabsWrap" style="display:none">
       <button class="viewtab on" id="viewTable">Tabel</button>
       <button class="viewtab" id="viewBoard">Tavle</button>
     </div>
@@ -260,7 +266,7 @@ const EFFORT_LABEL = { 'Small':'Lille', 'Medium':'Mellem', 'Large':'Stor' };
 let viewMode = 'table';
 let panelComments = [];
 let panelFiles = [];
-const collapsed = new Set();
+let currentProjectId = null;
 
 const STATUSES = ['Not started','In progress','Done'];
 const PRIOS = ['Low','Medium','High'];
@@ -401,42 +407,34 @@ function bindCellControls(root){
 
 /* ---- Tabellen ---- */
 
+function updateToolbar(){
+  const inProject = currentProjectId != null;
+  document.getElementById('backToFolders').style.display = inProject ? 'inline-block' : 'none';
+  document.getElementById('search').style.display = inProject ? 'block' : 'none';
+  document.getElementById('viewtabsWrap').style.display = inProject ? 'inline-flex' : 'none';
+}
+
 function render(){
   const wrap = document.getElementById('groups');
+  updateToolbar();
   if(!STATE.projects.length){
-    wrap.innerHTML = '<div class="empty">Ingen projekter endnu — opret det første med "+ Nyt projekt".</div>';
+    wrap.innerHTML = '<div class="empty">Ingen projektmapper endnu — opret den første med "+ Nyt projekt".</div>';
     return;
   }
-  if(viewMode === 'board') return renderBoard();
-  wrap.innerHTML = STATE.projects.map(p => {
-    const tasks = sortTasks(STATE.tasks.filter(t => t.project_id === p.id && !t.parent_task_id && matchesFilter(t)));
-    const isCollapsed = collapsed.has(p.id);
-    return '<div class="group' + (isCollapsed?' collapsed':'') + '" data-pid="' + p.id + '">' +
-      '<div class="grouphead"><span class="car">▾</span>' +
-        '<span class="gopen" data-pid="' + p.id + '" title="Åbn projekt"><span class="gicon">' + esc(p.icon||'📁') + '</span>' + esc(p.name) + '</span>' +
-        '<span class="gcount">' + tasks.length + '</span><span class="gsp"></span>' +
-        '<button class="delprojbtn" data-pid="' + p.id + '" title="Slet projekt">🗑</button></div>' +
-      renderTable(p, tasks) +
-    '</div>';
-  }).join('');
+  if(currentProjectId == null) return renderLanding();
+  const p = STATE.projects.find(x => x.id === currentProjectId);
+  if(!p){ currentProjectId = null; return render(); }
+  if(viewMode === 'board') return renderBoard(p);
 
-  wrap.querySelectorAll('.grouphead').forEach(h => h.onclick = () => {
-    const pid = Number(h.closest('.group').dataset.pid);
-    if(collapsed.has(pid)) collapsed.delete(pid); else collapsed.add(pid);
-    render();
-  });
-  wrap.querySelectorAll('.gopen').forEach(el => el.onclick = e => {
-    e.stopPropagation();
-    openProjectPanel(Number(el.dataset.pid));
-  });
-  wrap.querySelectorAll('.delprojbtn').forEach(b => b.onclick = async e => {
-    e.stopPropagation();
-    const pid = Number(b.dataset.pid);
-    const proj = STATE.projects.find(p => p.id === pid);
-    if(!confirm('Slet projektet "' + (proj ? proj.name : '') + '" og alle dets opgaver? Kan ikke fortrydes.')) return;
-    await api('/api/projects/' + pid, { method:'DELETE' });
-    await loadAll();
-  });
+  const tasks = sortTasks(STATE.tasks.filter(t => t.project_id === p.id && !t.parent_task_id && matchesFilter(t)));
+  wrap.innerHTML =
+    '<div class="projhead">' +
+      '<span class="gopen" data-pid="' + p.id + '" title="Åbn projektnoter"><span class="gicon">' + esc(p.icon||'📁') + '</span>' + esc(p.name) + '</span>' +
+      '<span class="gcount">' + tasks.length + '</span>' +
+    '</div>' +
+    renderTable(p, tasks);
+
+  wrap.querySelectorAll('.gopen').forEach(el => el.onclick = () => openProjectPanel(Number(el.dataset.pid)));
   wrap.querySelectorAll('[data-th]').forEach(th => th.onclick = () => {
     const k = th.dataset.th;
     sortDir = (sortKey === k) ? -sortDir : 1;
@@ -452,6 +450,35 @@ function render(){
   wrap.querySelectorAll('.addrow').forEach(el => el.onclick = () => addTask(Number(el.dataset.pid)));
   bindCellControls(wrap);
 }
+
+function renderLanding(){
+  const wrap = document.getElementById('groups');
+  wrap.innerHTML = '<div class="folders">' + STATE.projects.map(p => {
+    const count = STATE.tasks.filter(t => t.project_id === p.id && !t.parent_task_id).length;
+    return '<div class="foldercard" data-pid="' + p.id + '">' +
+      '<button class="delprojbtn" data-pid="' + p.id + '" title="Slet projekt">🗑</button>' +
+      '<div class="foldericon">' + esc(p.icon||'📁') + '</div>' +
+      '<div class="foldername">' + esc(p.name) + '</div>' +
+      '<div class="folderstat">' + count + ' opgave' + (count===1?'':'r') + '</div>' +
+    '</div>';
+  }).join('') + '</div>';
+  wrap.querySelectorAll('.foldercard').forEach(c => c.onclick = () => { currentProjectId = Number(c.dataset.pid); render(); });
+  wrap.querySelectorAll('.delprojbtn').forEach(b => b.onclick = async e => {
+    e.stopPropagation();
+    const pid = Number(b.dataset.pid);
+    const proj = STATE.projects.find(p => p.id === pid);
+    if(!confirm('Slet projektet "' + (proj ? proj.name : '') + '" og alle dets opgaver? Kan ikke fortrydes.')) return;
+    await api('/api/projects/' + pid, { method:'DELETE' });
+    await loadAll();
+  });
+}
+
+document.getElementById('backToFolders').onclick = () => {
+  currentProjectId = null;
+  filterText = '';
+  document.getElementById('search').value = '';
+  render();
+};
 
 function renderTable(p, tasks){
   const rows = tasks.map(t => {
@@ -478,22 +505,26 @@ function renderTable(p, tasks){
     '</tbody></table></div>';
 }
 
-function renderBoard(){
+function renderBoard(p){
   const wrap = document.getElementById('groups');
-  const tasks = STATE.tasks.filter(t => !t.parent_task_id && matchesFilter(t));
-  wrap.innerHTML = '<div class="board">' + STATUSES.map(s => {
-    const col = tasks.filter(t => (t.status||'Not started') === s);
-    return '<div class="boardcol"><div class="boardhead"><span class="dot" style="background:' + META.status[s].dot + '"></span>' + STATUS_LABEL[s] +
-      '<span class="gcount">' + col.length + '</span></div><div class="boardcards">' +
-      (col.map(renderCard).join('') || '<div class="depnames" style="padding:6px 2px">Ingen opgaver</div>') + '</div></div>';
-  }).join('') + '</div>';
+  const tasks = STATE.tasks.filter(t => t.project_id === p.id && !t.parent_task_id && matchesFilter(t));
+  wrap.innerHTML =
+    '<div class="projhead">' +
+      '<span class="gopen" data-pid="' + p.id + '" title="Åbn projektnoter"><span class="gicon">' + esc(p.icon||'📁') + '</span>' + esc(p.name) + '</span>' +
+      '<span class="gcount">' + tasks.length + '</span>' +
+    '</div>' +
+    '<div class="board">' + STATUSES.map(s => {
+      const col = tasks.filter(t => (t.status||'Not started') === s);
+      return '<div class="boardcol"><div class="boardhead"><span class="dot" style="background:' + META.status[s].dot + '"></span>' + STATUS_LABEL[s] +
+        '<span class="gcount">' + col.length + '</span></div><div class="boardcards">' +
+        (col.map(renderCard).join('') || '<div class="depnames" style="padding:6px 2px">Ingen opgaver</div>') + '</div></div>';
+    }).join('') + '</div>';
+  wrap.querySelectorAll('.gopen').forEach(el => el.onclick = () => openProjectPanel(Number(el.dataset.pid)));
   wrap.querySelectorAll('.card').forEach(c => c.onclick = () => openPanel(Number(c.dataset.id)));
   bindCellControls(wrap);
 }
 function renderCard(t){
-  const proj = projectOf(t);
   return '<div class="card" data-id="' + t.id + '">' +
-    '<div class="cardproj">' + esc(proj ? proj.icon||'📁' : '') + ' ' + esc(proj ? proj.name : '') + '</div>' +
     '<div class="cardname">' + esc(t.name) + '</div>' +
     '<div class="cardmeta">' + personBtn(t.id, t.assignee_id) + pillBtn('priority', t.id, t.priority) + dateBtn(t.id, t.due_date, t.status) + '</div>' +
   '</div>';

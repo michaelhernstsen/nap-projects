@@ -270,6 +270,8 @@ form.rowform{display:inline}
 .btn2{width:auto;margin-top:0;padding:5px 10px;font-size:12px;font-weight:500;
   background:#fff;color:#1a1a18;border:1px solid #e3e3df}
 .btn2:hover{background:#f0f1f4}
+.chk{display:flex;align-items:center;gap:6px;font-size:12.5px;margin:3px 0}
+.chk input{width:auto}
 `;
 
 const authSide = (titel, undertekst, indhold, bredde) => `<!DOCTYPE html><html lang="da"><head>
@@ -357,14 +359,23 @@ const changePasswordSide = (tvunget, fejl, ok) => authSide('Skift adgangskode',
   </form>
   ${tvunget ? '' : '<p class="s" style="margin-top:14px"><a href="/">Til projekter</a></p>'}`);
 
-const adminUsersSide = (brugere, nyKode, fejl) => authSide('Administrer brugere', null, `
+const adminUsersSide = (brugere, projekter, adgang, nyKode, fejl) => authSide('Administrer brugere', null, `
   ${fejl ? `<div class="fejl">${esc(fejl)}</div>` : ''}
   ${nyKode ? `<div class="ok">Bruger oprettet. Midlertidig adgangskode (vises kun denne ene gang):<br>
     <div class="mono" style="margin-top:6px">${esc(nyKode)}</div></div>` : ''}
-  <table><thead><tr><th>Bruger</th><th>2FA</th><th>Admin</th><th></th></tr></thead><tbody>
-  ${brugere.map(b => `<tr><td>${esc(b.username)}</td>
+  <table><thead><tr><th>Bruger</th><th>2FA</th><th>Admin</th><th>Adgang til projektmapper</th><th></th></tr></thead><tbody>
+  ${brugere.map(b => {
+    const mine = adgang[b.id] || new Set();
+    return `<tr><td>${esc(b.username)}</td>
     <td>${b.totp_secret ? '<span class="pill g">sat op</span>' : '<span class="pill m">mangler</span>'}</td>
     <td>${b.is_admin ? '<span class="pill g">ja</span>' : '–'}</td>
+    <td>${b.is_admin ? '<span class="pill g">alt</span>' : (projekter.length ? `
+      <form method="POST" action="/admin/users">
+        <input type="hidden" name="action" value="setprojectaccess"><input type="hidden" name="id" value="${b.id}">
+        ${projekter.map(p => `<label class="chk">
+          <input type="checkbox" name="project" value="${p.id}" ${mine.has(p.id) ? 'checked' : ''}
+            onchange="this.form.requestSubmit()">${esc(p.icon||'📁')} ${esc(p.name)}</label>`).join('')}
+      </form>` : '<span class="pill m">ingen mapper endnu</span>')}</td>
     <td>
       <form class="rowform" method="POST" action="/admin/users">
         <input type="hidden" name="action" value="reset2fa"><input type="hidden" name="id" value="${b.id}">
@@ -374,7 +385,8 @@ const adminUsersSide = (brugere, nyKode, fejl) => authSide('Administrer brugere'
         <input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="${b.id}">
         <button class="btn2" type="submit">Slet</button>
       </form>
-    </td></tr>`).join('')}
+    </td></tr>`;
+  }).join('')}
   </tbody></table>
   <form method="POST" action="/admin/users" style="margin-top:20px">
     <input type="hidden" name="action" value="create">
@@ -382,7 +394,7 @@ const adminUsersSide = (brugere, nyKode, fejl) => authSide('Administrer brugere'
     <input id="nu" name="username" autocomplete="off" required>
     <button type="submit">Opret bruger (midlertidig kode genereres)</button>
   </form>
-  <p class="s" style="margin-top:14px"><a href="/">Til projekter</a></p>`, 520);
+  <p class="s" style="margin-top:14px"><a href="/">Til projekter</a></p>`, 640);
 
 const html = (body, status = 200, extra = {}) => {
   const headers = new Headers({
@@ -416,7 +428,40 @@ async function ryddTaskRelationer(env, taskId){
   await env.DB.prepare(`DELETE FROM task_comments WHERE task_id=?`).bind(taskId).run();
 }
 
-async function hentAlt(db){
+/**
+ * Adgang til projektmapper - admins ser alt, andre kun det de er tildelt.
+ * Se nap-homehub's tool_access for samme moenster.
+ */
+async function hentAlleProjekter(db){
+  const r = await db.prepare(`SELECT id, name, icon FROM projects ORDER BY position, id`).all();
+  return r.results || [];
+}
+async function hentAlProjectAdgang(db){
+  const r = await db.prepare(`SELECT user_id, project_id FROM project_access`).all();
+  const ud = {};
+  for(const row of (r.results || [])){ (ud[row.user_id] ||= new Set()).add(row.project_id); }
+  return ud;
+}
+async function tildelProjectAdgang(db, userId, projectId){
+  await db.prepare(`INSERT OR IGNORE INTO project_access (user_id, project_id, granted_at)
+    VALUES (?,?,datetime('now'))`).bind(userId, projectId).run();
+}
+async function fjernProjectAdgang(db, userId, projectId){
+  await db.prepare(`DELETE FROM project_access WHERE user_id=? AND project_id=?`).bind(userId, projectId).run();
+}
+/** Haandhaeves ogsaa server-side, ikke kun skjult i UI'en - se §"adgang til projektmapper". */
+async function harProjectAdgang(db, mig, projectId){
+  if(mig.is_admin) return true;
+  if(!projectId) return false;
+  const r = await db.prepare(`SELECT 1 FROM project_access WHERE user_id=? AND project_id=?`).bind(mig.id, projectId).first();
+  return !!r;
+}
+async function hentTaskProjectId(db, taskId){
+  const r = await db.prepare(`SELECT project_id FROM tasks WHERE id=?`).bind(taskId).first();
+  return r ? r.project_id : null;
+}
+
+async function hentAlt(db, userId, isAdmin){
   const [projekter, opgaver, brugere, tags, taskTags, deps] = await Promise.all([
     db.prepare(`SELECT id, name, icon, start_date, due_date, effort, archived, position, description
       FROM projects ORDER BY position, id`).all(),
@@ -427,6 +472,14 @@ async function hentAlt(db){
     db.prepare(`SELECT task_id, tag_id FROM task_tags`).all(),
     db.prepare(`SELECT task_id, depends_on_task_id FROM task_deps`).all(),
   ]);
+  let mineProjekter = projekter.results || [];
+  let mineOpgaver = opgaver.results || [];
+  if(!isAdmin){
+    const pa = await db.prepare(`SELECT project_id FROM project_access WHERE user_id=?`).bind(userId).all();
+    const tilladt = new Set((pa.results || []).map(r => r.project_id));
+    mineProjekter = mineProjekter.filter(p => tilladt.has(p.id));
+    mineOpgaver = mineOpgaver.filter(t => tilladt.has(t.project_id));
+  }
   const tagsPrTask = {};
   for(const r of taskTags.results || []){ (tagsPrTask[r.task_id] ||= []).push(r.tag_id); }
   const blockedByPrTask = {};
@@ -435,14 +488,14 @@ async function hentAlt(db){
     (blockedByPrTask[r.task_id] ||= []).push(r.depends_on_task_id);
     (blockerPrTask[r.depends_on_task_id] ||= []).push(r.task_id);
   }
-  const opg = (opgaver.results || []).map(t => ({
+  const opg = mineOpgaver.map(t => ({
     ...t,
     tags: tagsPrTask[t.id] || [],
     blocked_by: blockedByPrTask[t.id] || [],
     blocking: blockerPrTask[t.id] || [],
   }));
   return {
-    projects: projekter.results || [],
+    projects: mineProjekter,
     tasks: opg,
     users: brugere.results || [],
     tags: tags.results || [],
@@ -625,39 +678,50 @@ export default {
 
     if(url.pathname === '/admin/users'){
       if(!mig.is_admin) return html('<h1>Ikke tilladt</h1>', 403);
+      const siden = async (nyKode, fejl) => adminUsersSide(
+        await hentBrugerListe(env.DB), await hentAlleProjekter(env.DB), await hentAlProjectAdgang(env.DB), nyKode, fejl);
       if(req.method === 'POST'){
         const form = await req.formData();
         const action = String(form.get('action') || '');
         if(action === 'create'){
           const username = String(form.get('username') || '').trim();
-          if(!username) return html(adminUsersSide(await hentBrugerListe(env.DB), null, 'Brugernavn mangler.'));
+          if(!username) return html(await siden(null, 'Brugernavn mangler.'));
           if(await brugerVedNavn(env.DB, username))
-            return html(adminUsersSide(await hentBrugerListe(env.DB), null, 'Brugernavnet er allerede i brug.'));
+            return html(await siden(null, 'Brugernavnet er allerede i brug.'));
           const kode = tilfaeldigKode(14);
           await opretBruger(env.DB, { username, password:kode, isAdmin:false, mustChange:true });
-          return html(adminUsersSide(await hentBrugerListe(env.DB), kode, null));
+          return html(await siden(kode, null));
         }
         if(action === 'delete'){
           const id = Number(form.get('id'));
-          if(id === mig.id)
-            return html(adminUsersSide(await hentBrugerListe(env.DB), null, 'Du kan ikke slette din egen konto.'));
+          if(id === mig.id) return html(await siden(null, 'Du kan ikke slette din egen konto.'));
           await env.DB.prepare(`DELETE FROM users WHERE id=?`).bind(id).run();
           await env.DB.prepare(`UPDATE tasks SET assignee_id=NULL WHERE assignee_id=?`).bind(id).run();
-          return html(adminUsersSide(await hentBrugerListe(env.DB), null, null));
+          await env.DB.prepare(`DELETE FROM project_access WHERE user_id=?`).bind(id).run();
+          return html(await siden(null, null));
         }
         if(action === 'reset2fa'){
           const id = Number(form.get('id'));
           await env.DB.prepare(`UPDATE users SET totp_secret=NULL, last_totp_step=NULL WHERE id=?`).bind(id).run();
-          return html(adminUsersSide(await hentBrugerListe(env.DB), null, null));
+          return html(await siden(null, null));
+        }
+        if(action === 'setprojectaccess'){
+          const id = Number(form.get('id'));
+          const valgt = new Set(form.getAll('project').map(Number));
+          for(const p of await hentAlleProjekter(env.DB)){
+            if(valgt.has(p.id)) await tildelProjectAdgang(env.DB, id, p.id);
+            else await fjernProjectAdgang(env.DB, id, p.id);
+          }
+          return html(await siden(null, null));
         }
       }
-      return html(adminUsersSide(await hentBrugerListe(env.DB), null, null));
+      return html(await siden(null, null));
     }
 
     if(url.pathname === '/api/me') return json({ id: mig.id, username: mig.username, isAdmin: !!mig.is_admin });
 
     if(url.pathname === '/api/all' && req.method === 'GET'){
-      return json(await hentAlt(env.DB));
+      return json(await hentAlt(env.DB, mig.id, !!mig.is_admin));
     }
 
     if(url.pathname === '/api/projects' && req.method === 'POST'){
@@ -665,10 +729,13 @@ export default {
       const r = await env.DB.prepare(`INSERT INTO projects (name, icon, start_date, due_date, effort, created_at, created_by)
         VALUES (?,?,?,?,?,datetime('now'),?)`)
         .bind(String(b.name||'Nyt projekt'), String(b.icon||'📁'), b.start_date||null, b.due_date||null, b.effort||null, mig.id).run();
-      return json({ id: r.meta.last_row_id });
+      const nyId = r.meta.last_row_id;
+      if(!mig.is_admin) await tildelProjectAdgang(env.DB, mig.id, nyId);
+      return json({ id: nyId });
     }
     if(url.pathname.match(/^\/api\/projects\/\d+$/) && (req.method === 'PATCH' || req.method === 'DELETE')){
       const id = Number(url.pathname.split('/').pop());
+      if(!await harProjectAdgang(env.DB, mig, id)) return json({ error:'ingen adgang' }, 403);
       if(req.method === 'DELETE'){
         const taskIds = (await env.DB.prepare(`SELECT id FROM tasks WHERE project_id=?`).bind(id).all())
           .results.map(r => r.id);
@@ -676,6 +743,7 @@ export default {
           await ryddTaskRelationer(env, tid);
         }
         await env.DB.prepare(`DELETE FROM tasks WHERE project_id=?`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM project_access WHERE project_id=?`).bind(id).run();
         await env.DB.prepare(`DELETE FROM projects WHERE id=?`).bind(id).run();
         return json({ ok:true });
       }
@@ -691,6 +759,7 @@ export default {
 
     if(url.pathname === '/api/tasks' && req.method === 'POST'){
       const b = await req.json();
+      if(!await harProjectAdgang(env.DB, mig, Number(b.project_id))) return json({ error:'ingen adgang' }, 403);
       const r = await env.DB.prepare(`INSERT INTO tasks (project_id, name, status, priority, assignee_id, due_date, parent_task_id, created_at, created_by)
         VALUES (?,?,?,?,?,?,?,datetime('now'),?)`)
         .bind(Number(b.project_id), String(b.name||'Ny opgave'), b.status||'Not started', b.priority||null,
@@ -699,6 +768,7 @@ export default {
     }
     if(url.pathname.match(/^\/api\/tasks\/\d+\/comments$/)){
       const taskId = Number(url.pathname.split('/')[3]);
+      if(!await harProjectAdgang(env.DB, mig, await hentTaskProjectId(env.DB, taskId))) return json({ error:'ingen adgang' }, 403);
       if(req.method === 'POST'){
         const b = await req.json();
         const body = String(b.body||'').trim();
@@ -715,6 +785,7 @@ export default {
     /* --- Vedhaeftede filer (R2) ------------------------------------ */
     if(url.pathname.match(/^\/api\/tasks\/\d+\/attachments$/)){
       const taskId = Number(url.pathname.split('/')[3]);
+      if(!await harProjectAdgang(env.DB, mig, await hentTaskProjectId(env.DB, taskId))) return json({ error:'ingen adgang' }, 403);
       if(req.method === 'POST'){
         const form = await req.formData();
         const file = form.get('file');
@@ -734,6 +805,7 @@ export default {
       const id = Number(url.pathname.split('/')[3]);
       const row = await env.DB.prepare(`SELECT * FROM task_attachments WHERE id=?`).bind(id).first();
       if(!row) return html('<h1>404</h1>', 404);
+      if(!await harProjectAdgang(env.DB, mig, await hentTaskProjectId(env.DB, row.task_id))) return html('<h1>403</h1>', 403);
       const obj = await env.FILES.get(row.r2_key);
       if(!obj) return html('<h1>404</h1>', 404);
       const headers = new Headers();
@@ -744,7 +816,8 @@ export default {
     }
     if(url.pathname.match(/^\/api\/attachments\/\d+$/) && req.method === 'DELETE'){
       const id = Number(url.pathname.split('/').pop());
-      const row = await env.DB.prepare(`SELECT r2_key FROM task_attachments WHERE id=?`).bind(id).first();
+      const row = await env.DB.prepare(`SELECT r2_key, task_id FROM task_attachments WHERE id=?`).bind(id).first();
+      if(row && !await harProjectAdgang(env.DB, mig, await hentTaskProjectId(env.DB, row.task_id))) return json({ error:'ingen adgang' }, 403);
       if(row){ try{ await env.FILES.delete(row.r2_key); }catch(e){} }
       await env.DB.prepare(`DELETE FROM task_attachments WHERE id=?`).bind(id).run();
       return json({ ok:true });
@@ -752,6 +825,7 @@ export default {
 
     if(url.pathname.match(/^\/api\/tasks\/\d+$/) && (req.method === 'PATCH' || req.method === 'DELETE')){
       const id = Number(url.pathname.split('/').pop());
+      if(!await harProjectAdgang(env.DB, mig, await hentTaskProjectId(env.DB, id))) return json({ error:'ingen adgang' }, 403);
       if(req.method === 'DELETE'){
         await ryddTaskRelationer(env, id);
         await env.DB.prepare(`UPDATE tasks SET parent_task_id=NULL WHERE parent_task_id=?`).bind(id).run();
@@ -759,6 +833,8 @@ export default {
         return json({ ok:true });
       }
       const b = await req.json();
+      if('project_id' in b && !await harProjectAdgang(env.DB, mig, Number(b.project_id)))
+        return json({ error:'ingen adgang til det nye projekt' }, 403);
       const felter = ['project_id','name','status','priority','assignee_id','due_date','position','description','parent_task_id'];
       const sat = felter.filter(f => f in b);
       if(sat.length){
