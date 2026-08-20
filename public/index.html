@@ -40,6 +40,10 @@ main{max-width:1180px;margin:0 auto;padding:10px 24px 80px}
 .gicon{font-size:16px}
 .gcount{color:var(--faint);font-weight:500;font-size:12.5px}
 .gsp{flex:1}
+.delprojbtn{flex:none;width:24px;height:24px;border:none;background:none;color:var(--faint);cursor:pointer;
+  border-radius:5px;font-size:13px;opacity:0}
+.group:hover .delprojbtn{opacity:1}
+.delprojbtn:hover{background:var(--redbg);color:var(--red)}
 .tablewrap{border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-top:8px}
 .group.collapsed .tablewrap{display:none}
 table{width:100%;border-collapse:collapse;font-size:13px}
@@ -79,6 +83,7 @@ tr.taskrow:hover .openbtn{opacity:1}
 .datebtn:hover{background:var(--hover)}
 .datebtn.empty{color:var(--faint)}
 .datebtn.overdue{color:var(--red);font-weight:600}
+.datebtn.loebende{color:var(--blue);font-weight:600;background:var(--bluebg);border-radius:20px;padding:4px 10px}
 
 .tagchip{display:inline-block;background:var(--graybg);color:var(--gray);border-radius:4px;
   padding:2px 7px;font-size:11px;font-weight:500;margin:1px 3px 1px 0}
@@ -89,7 +94,7 @@ tr.taskrow:hover .openbtn{opacity:1}
 .addrow:hover{color:var(--muted);background:var(--hover)}
 
 .popover{position:absolute;background:#fff;border:1px solid var(--line);border-radius:9px;
-  box-shadow:0 10px 28px rgba(0,0,0,.14);padding:6px;z-index:80;min-width:190px;max-height:280px;overflow:auto}
+  box-shadow:0 10px 28px rgba(0,0,0,.14);padding:6px;z-index:100;min-width:190px;max-height:280px;overflow:auto}
 .popitem{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px}
 .popitem:hover{background:var(--hover)}
 .popitem.on{font-weight:650}
@@ -143,6 +148,19 @@ tr.taskrow:hover .openbtn{opacity:1}
 .subadd input{width:100%;border:none;background:transparent;font-size:13.5px;padding:6px 4px;border-radius:6px;color:var(--muted)}
 .subadd input:hover,.subadd input:focus{background:var(--hover);outline:none;color:var(--ink)}
 
+/* Filer */
+.filerow{display:flex;align-items:center;gap:8px;padding:6px 4px;border-radius:6px;font-size:13.5px}
+.filerow:hover{background:var(--hover)}
+.filelink{color:var(--ink);text-decoration:none;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.filelink:hover{text-decoration:underline}
+.filesize{color:var(--faint);font-size:12px;flex:none}
+.filedel{border:none;background:none;color:var(--faint);cursor:pointer;font-size:15px;flex:none;
+  width:22px;height:22px;border-radius:5px;opacity:0}
+.filerow:hover .filedel{opacity:1}
+.filedel:hover{background:var(--line);color:var(--ink)}
+.filebtn{display:inline-block;cursor:pointer;color:var(--muted);font-size:13px;padding:5px 4px;border-radius:6px}
+.filebtn:hover{background:var(--hover);color:var(--ink)}
+
 /* Kommentarer */
 .commentlist{margin-bottom:10px}
 .comment{display:flex;gap:9px;padding:8px 2px}
@@ -173,7 +191,7 @@ tr.taskrow:hover .openbtn{opacity:1}
 </head>
 <body>
 <div class="top">
-  <span class="mark">🗂️</span><span class="t">NAP</span><span class="s">Projects</span>
+  <span class="mark">🗂️</span><span class="t">NAP</span><span class="s">Projekter</span>
   <div class="sp"></div>
   <div class="who" id="who"></div>
 </div>
@@ -182,7 +200,7 @@ tr.taskrow:hover .openbtn{opacity:1}
     <input type="search" id="search" placeholder="Søg i opgaver…">
     <div class="viewtabs">
       <button class="viewtab on" id="viewTable">Tabel</button>
-      <button class="viewtab" id="viewBoard">Board</button>
+      <button class="viewtab" id="viewBoard">Tavle</button>
     </div>
     <div class="sp"></div>
     <button class="btn" id="newProject">+ Nyt projekt</button>
@@ -206,6 +224,10 @@ tr.taskrow:hover .openbtn{opacity:1}
     <div class="sublab">Sub-opgaver</div>
     <div id="panelSubtasks"></div>
     <div class="panel-divider"></div>
+    <div class="desclab">Filer</div>
+    <div id="panelFiles"></div>
+    <label class="filebtn">+ Vedhæft fil<input type="file" id="fileInput" style="display:none"></label>
+    <div class="panel-divider"></div>
     <div class="desclab">Kommentarer</div>
     <div class="commentlist" id="panelComments"></div>
     <div class="commentadd">
@@ -220,10 +242,14 @@ let sortKey = null, sortDir = 1, filterText = '';
 let openTaskId = null;
 let viewMode = 'table';
 let panelComments = [];
+let panelFiles = [];
 const collapsed = new Set();
 
 const STATUSES = ['Not started','In progress','Done'];
 const PRIOS = ['Low','Medium','High'];
+const STATUS_LABEL = { 'Not started':'Ikke startet', 'In progress':'I gang', 'Done':'Færdig' };
+const PRIO_LABEL = { 'Low':'Lav', 'Medium':'Mellem', 'High':'Høj' };
+const DUE_LOEBENDE = 'løbende';
 const META = {
   status: {
     'Not started': { bg:'var(--graybg)', fg:'var(--gray)', dot:'var(--graydot)' },
@@ -246,11 +272,12 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;',
 function avatarColor(name){ let h=0; for(const c of name) h=(h*31+c.charCodeAt(0))>>>0; return AVATAR_PALETTE[h % AVATAR_PALETTE.length]; }
 function formatDate(iso){
   if(!iso) return '';
+  if(iso === DUE_LOEBENDE) return 'Løbende';
   const [y,m,d] = iso.split('-').map(Number);
   return d + '. ' + MONTHS[m-1];
 }
 function isOverdue(iso, status){
-  if(!iso || status === 'Done') return false;
+  if(!iso || iso === DUE_LOEBENDE || status === 'Done') return false;
   return iso < new Date().toISOString().slice(0,10);
 }
 function relTime(iso){
@@ -328,7 +355,7 @@ function sortTasks(list){
 function pillBtn(kind, taskId, value){
   const m = kind==='status' ? META.status[value||'Not started'] : (value ? META.priority[value] : null);
   if(!m) return '<button class="pillbtn empty" data-id="'+taskId+'" data-kind="'+kind+'">–</button>';
-  const label = kind==='status' ? (value||'Not started') : value;
+  const label = kind==='status' ? STATUS_LABEL[value||'Not started'] : PRIO_LABEL[value];
   return '<button class="pillbtn" data-id="'+taskId+'" data-kind="'+kind+'" style="background:'+m.bg+';color:'+m.fg+'">'+
     '<span class="dot" style="background:'+m.dot+'"></span>'+esc(label)+'</button>';
 }
@@ -342,7 +369,8 @@ function personBtn(taskId, userId){
 }
 function dateBtn(taskId, iso, status){
   if(!iso) return '<button class="datebtn empty" data-id="'+taskId+'">+ Dato</button>';
-  return '<button class="datebtn'+(isOverdue(iso,status)?' overdue':'')+'" data-id="'+taskId+'">'+esc(formatDate(iso))+'</button>';
+  const cls = iso===DUE_LOEBENDE ? ' loebende' : (isOverdue(iso,status) ? ' overdue' : '');
+  return '<button class="datebtn'+cls+'" data-id="'+taskId+'">'+esc(formatDate(iso))+'</button>';
 }
 
 function bindCellControls(root){
@@ -367,7 +395,8 @@ function render(){
     const isCollapsed = collapsed.has(p.id);
     return '<div class="group' + (isCollapsed?' collapsed':'') + '" data-pid="' + p.id + '">' +
       '<div class="grouphead"><span class="car">▾</span><span class="gicon">' + esc(p.icon||'📁') + '</span>' + esc(p.name) +
-        '<span class="gcount">' + tasks.length + '</span><span class="gsp"></span></div>' +
+        '<span class="gcount">' + tasks.length + '</span><span class="gsp"></span>' +
+        '<button class="delprojbtn" data-pid="' + p.id + '" title="Slet projekt">🗑</button></div>' +
       renderTable(p, tasks) +
     '</div>';
   }).join('');
@@ -376,6 +405,14 @@ function render(){
     const pid = Number(h.closest('.group').dataset.pid);
     if(collapsed.has(pid)) collapsed.delete(pid); else collapsed.add(pid);
     render();
+  });
+  wrap.querySelectorAll('.delprojbtn').forEach(b => b.onclick = async e => {
+    e.stopPropagation();
+    const pid = Number(b.dataset.pid);
+    const proj = STATE.projects.find(p => p.id === pid);
+    if(!confirm('Slet projektet "' + (proj ? proj.name : '') + '" og alle dets opgaver? Kan ikke fortrydes.')) return;
+    await api('/api/projects/' + pid, { method:'DELETE' });
+    await loadAll();
   });
   wrap.querySelectorAll('[data-th]').forEach(th => th.onclick = () => {
     const k = th.dataset.th;
@@ -414,8 +451,8 @@ function renderTable(p, tasks){
     '</tr>';
   }).join('');
   return '<div class="tablewrap"><table><thead><tr>' +
-    '<th data-th="name">Task name</th><th data-th="status">Status</th><th data-th="assignee_id">Assignee</th>' +
-    '<th data-th="due_date">Due</th><th data-th="priority">Priority</th><th>Tags</th><th>Blocked By</th><th>Is Blocking</th>' +
+    '<th data-th="name">Opgave</th><th data-th="status">Status</th><th data-th="assignee_id">Ansvarlig</th>' +
+    '<th data-th="due_date">Frist</th><th data-th="priority">Prioritet</th><th>Mærker</th><th>Blokeret af</th><th>Blokerer</th>' +
     '</tr></thead><tbody>' + rows +
     '<tr><td class="addrow" data-pid="' + p.id + '" colspan="8">+ Ny opgave</td></tr>' +
     '</tbody></table></div>';
@@ -426,7 +463,7 @@ function renderBoard(){
   const tasks = STATE.tasks.filter(t => !t.parent_task_id && matchesFilter(t));
   wrap.innerHTML = '<div class="board">' + STATUSES.map(s => {
     const col = tasks.filter(t => (t.status||'Not started') === s);
-    return '<div class="boardcol"><div class="boardhead"><span class="dot" style="background:' + META.status[s].dot + '"></span>' + s +
+    return '<div class="boardcol"><div class="boardhead"><span class="dot" style="background:' + META.status[s].dot + '"></span>' + STATUS_LABEL[s] +
       '<span class="gcount">' + col.length + '</span></div><div class="boardcards">' +
       (col.map(renderCard).join('') || '<div class="depnames" style="padding:6px 2px">Ingen opgaver</div>') + '</div></div>';
   }).join('') + '</div>';
@@ -455,12 +492,14 @@ function openPanel(taskId){
   openTaskId = taskId;
   renderPanel(taskId);
   loadComments(taskId);
+  loadFiles(taskId);
   document.getElementById('backdrop').classList.add('open');
   document.getElementById('panel').classList.add('open');
 }
 function closePanel(){
   openTaskId = null;
   panelComments = [];
+  panelFiles = [];
   document.getElementById('backdrop').classList.remove('open');
   document.getElementById('panel').classList.remove('open');
 }
@@ -480,14 +519,14 @@ function renderPanel(taskId){
   const propsEl = document.getElementById('panelProps');
   propsEl.innerHTML =
     propRow('Status', pillBtn('status', t.id, t.status)) +
-    propRow('Assignee', personBtn(t.id, t.assignee_id)) +
-    propRow('Due', dateBtn(t.id, t.due_date, t.status)) +
-    propRow('Priority', pillBtn('priority', t.id, t.priority)) +
-    propRow('Tags', '<span class="tagsbtn" data-id="' + t.id + '">' +
+    propRow('Ansvarlig', personBtn(t.id, t.assignee_id)) +
+    propRow('Frist', dateBtn(t.id, t.due_date, t.status)) +
+    propRow('Prioritet', pillBtn('priority', t.id, t.priority)) +
+    propRow('Mærker', '<span class="tagsbtn" data-id="' + t.id + '">' +
       ((t.tags||[]).map(tid => '<span class="tagchip">' + esc(tagName(tid)) + '</span>').join('') || '<span class="depnames">+ tilføj</span>') + '</span>') +
-    propRow('Blocked By', '<span class="depsbtn" data-id="' + t.id + '"><span class="depnames">' +
+    propRow('Blokeret af', '<span class="depsbtn" data-id="' + t.id + '"><span class="depnames">' +
       ((t.blocked_by||[]).map(taskName).filter(Boolean).join(', ') || '+ tilføj') + '</span></span>') +
-    propRow('Is Blocking', '<span class="depnames">' + (blockingNames.join(', ') || '–') + '</span>');
+    propRow('Blokerer', '<span class="depnames">' + (blockingNames.join(', ') || '–') + '</span>');
   bindCellControls(propsEl);
 
   const descEl = document.getElementById('panelDesc');
@@ -580,8 +619,9 @@ function openPillPopover(e, taskId, kind){
   let html = kind==='priority'
     ? '<div class="popitem' + (!current?' on':'') + '" data-v=""><span class="dot" style="background:var(--graydot)"></span>Ingen</div>'
     : '';
+  const labels = kind==='status' ? STATUS_LABEL : PRIO_LABEL;
   html += options.map(o => '<div class="popitem' + (o===current?' on':'') + '" data-v="' + o + '">' +
-    '<span class="dot" style="background:' + meta[o].dot + '"></span>' + o + '</div>').join('');
+    '<span class="dot" style="background:' + meta[o].dot + '"></span>' + labels[o] + '</div>').join('');
   pop.innerHTML = html;
   placePopover(pop, e);
   pop.querySelectorAll('.popitem').forEach(item => item.onclick = () => {
@@ -615,14 +655,17 @@ function openPersonPopover(e, taskId){
 function openDatePopover(e, taskId){
   e.stopPropagation(); closePopover();
   const t = STATE.tasks.find(x=>x.id===taskId);
+  const isLoebende = t.due_date === DUE_LOEBENDE;
   const pop = document.createElement('div');
   pop.className = 'popover';
-  pop.innerHTML = '<input type="date" value="' + (t.due_date||'') + '">' +
+  pop.innerHTML = '<input type="date" value="' + (isLoebende ? '' : (t.due_date||'')) + '">' +
+    '<div class="popitem' + (isLoebende?' on':'') + ' loebende"><span class="dot" style="background:var(--bluedot)"></span>Løbende opgave</div>' +
     (t.due_date ? '<div class="popitem clear">Fjern dato</div>' : '');
   placePopover(pop, e);
   const inp = pop.querySelector('input');
   inp.focus();
   inp.onchange = () => { saveTask(taskId, { due_date: inp.value || null }); closePopover(); };
+  pop.querySelector('.loebende').onclick = () => { saveTask(taskId, { due_date: DUE_LOEBENDE }); closePopover(); };
   const clr = pop.querySelector('.clear');
   if(clr) clr.onclick = () => { saveTask(taskId, { due_date: null }); closePopover(); };
 }
@@ -671,6 +714,43 @@ function openDepsPopover(e, taskId){
 }
 
 document.addEventListener('click', closePopover);
+
+/* ---- Filer ---- */
+
+function humanSize(bytes){
+  if(bytes == null) return '';
+  if(bytes < 1024) return bytes + ' B';
+  if(bytes < 1024*1024) return Math.round(bytes/1024) + ' KB';
+  return (bytes/1024/1024).toFixed(1) + ' MB';
+}
+async function loadFiles(taskId){
+  panelFiles = await api('/api/tasks/' + taskId + '/attachments');
+  renderFiles();
+}
+function renderFiles(){
+  const el = document.getElementById('panelFiles');
+  el.innerHTML = panelFiles.map(f =>
+    '<div class="filerow">' +
+      '<a class="filelink" href="/api/attachments/' + f.id + '/download">📎 ' + esc(f.filename) + '</a>' +
+      '<span class="filesize">' + humanSize(f.size) + '</span>' +
+      '<button class="filedel" data-id="' + f.id + '" title="Fjern fil">×</button>' +
+    '</div>'
+  ).join('') || '<div class="depnames">Ingen filer endnu</div>';
+  el.querySelectorAll('.filedel').forEach(b => b.onclick = async () => {
+    await api('/api/attachments/' + b.dataset.id, { method:'DELETE' });
+    await loadFiles(openTaskId);
+  });
+}
+document.getElementById('fileInput').onchange = async e => {
+  const file = e.target.files[0];
+  if(!file || openTaskId == null) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  const r = await fetch('/api/tasks/' + openTaskId + '/attachments', { method:'POST', body: fd });
+  if(r.status === 401){ location.href = '/login'; return; }
+  e.target.value = '';
+  await loadFiles(openTaskId);
+};
 
 /* ---- Kommentarer ---- */
 

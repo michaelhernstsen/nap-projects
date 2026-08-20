@@ -17,3 +17,7 @@ binding = "ASSETS"
 binding = "DB"
 database_name = "nap-projects"
 database_id = "5fb3c4cb-0907-4369-ac88-e97656ea78b9"
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "nap-projects-files"

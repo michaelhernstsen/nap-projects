@@ -400,6 +400,22 @@ const html = (body, status = 200, extra = {}) => {
 /* Data - projekter/opgaver                                            */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Rydder alt der peger paa en opgave - tags, blocked-by-relationer, kommentarer
+ * og vedhaeftede filer (baade D1-raekken og selve objektet i R2). Bruges baade
+ * ved sletning af en enkelt opgave og ved sletning af et helt projekt.
+ */
+async function ryddTaskRelationer(env, taskId){
+  const filer = await env.DB.prepare(`SELECT r2_key FROM task_attachments WHERE task_id=?`).bind(taskId).all();
+  for(const f of (filer.results || [])){
+    try{ await env.FILES.delete(f.r2_key); }catch(e){}
+  }
+  await env.DB.prepare(`DELETE FROM task_attachments WHERE task_id=?`).bind(taskId).run();
+  await env.DB.prepare(`DELETE FROM task_tags WHERE task_id=?`).bind(taskId).run();
+  await env.DB.prepare(`DELETE FROM task_deps WHERE task_id=? OR depends_on_task_id=?`).bind(taskId, taskId).run();
+  await env.DB.prepare(`DELETE FROM task_comments WHERE task_id=?`).bind(taskId).run();
+}
+
 async function hentAlt(db){
   const [projekter, opgaver, brugere, tags, taskTags, deps] = await Promise.all([
     db.prepare(`SELECT id, name, icon, start_date, due_date, effort, archived, position
@@ -654,6 +670,11 @@ export default {
     if(url.pathname.match(/^\/api\/projects\/\d+$/) && (req.method === 'PATCH' || req.method === 'DELETE')){
       const id = Number(url.pathname.split('/').pop());
       if(req.method === 'DELETE'){
+        const taskIds = (await env.DB.prepare(`SELECT id FROM tasks WHERE project_id=?`).bind(id).all())
+          .results.map(r => r.id);
+        for(const tid of taskIds){
+          await ryddTaskRelationer(env, tid);
+        }
         await env.DB.prepare(`DELETE FROM tasks WHERE project_id=?`).bind(id).run();
         await env.DB.prepare(`DELETE FROM projects WHERE id=?`).bind(id).run();
         return json({ ok:true });
@@ -690,12 +711,49 @@ export default {
         FROM task_comments WHERE task_id=? ORDER BY id`).bind(taskId).all();
       return json(r.results || []);
     }
+
+    /* --- Vedhaeftede filer (R2) ------------------------------------ */
+    if(url.pathname.match(/^\/api\/tasks\/\d+\/attachments$/)){
+      const taskId = Number(url.pathname.split('/')[3]);
+      if(req.method === 'POST'){
+        const form = await req.formData();
+        const file = form.get('file');
+        if(!file || typeof file === 'string') return json({ error:'ingen fil' }, 400);
+        const key = 'task-' + taskId + '/' + crypto.randomUUID() + '-' + file.name;
+        await env.FILES.put(key, file.stream(), { httpMetadata: { contentType: file.type || 'application/octet-stream' } });
+        const r = await env.DB.prepare(`INSERT INTO task_attachments (task_id, filename, size, content_type, r2_key, uploaded_by, uploaded_at)
+          VALUES (?,?,?,?,?,?,datetime('now'))`)
+          .bind(taskId, file.name, file.size, file.type || null, key, mig.id).run();
+        return json({ id: r.meta.last_row_id });
+      }
+      const r = await env.DB.prepare(`SELECT id, task_id, filename, size, content_type, uploaded_by, uploaded_at
+        FROM task_attachments WHERE task_id=? ORDER BY id`).bind(taskId).all();
+      return json(r.results || []);
+    }
+    if(url.pathname.match(/^\/api\/attachments\/\d+\/download$/)){
+      const id = Number(url.pathname.split('/')[3]);
+      const row = await env.DB.prepare(`SELECT * FROM task_attachments WHERE id=?`).bind(id).first();
+      if(!row) return html('<h1>404</h1>', 404);
+      const obj = await env.FILES.get(row.r2_key);
+      if(!obj) return html('<h1>404</h1>', 404);
+      const headers = new Headers();
+      headers.set('content-type', row.content_type || 'application/octet-stream');
+      headers.set('content-disposition', 'attachment; filename="' + String(row.filename).replace(/"/g,'') + '"');
+      headers.set('cache-control', 'private, max-age=3600');
+      return new Response(obj.body, { headers });
+    }
+    if(url.pathname.match(/^\/api\/attachments\/\d+$/) && req.method === 'DELETE'){
+      const id = Number(url.pathname.split('/').pop());
+      const row = await env.DB.prepare(`SELECT r2_key FROM task_attachments WHERE id=?`).bind(id).first();
+      if(row){ try{ await env.FILES.delete(row.r2_key); }catch(e){} }
+      await env.DB.prepare(`DELETE FROM task_attachments WHERE id=?`).bind(id).run();
+      return json({ ok:true });
+    }
+
     if(url.pathname.match(/^\/api\/tasks\/\d+$/) && (req.method === 'PATCH' || req.method === 'DELETE')){
       const id = Number(url.pathname.split('/').pop());
       if(req.method === 'DELETE'){
-        await env.DB.prepare(`DELETE FROM task_tags WHERE task_id=?`).bind(id).run();
-        await env.DB.prepare(`DELETE FROM task_deps WHERE task_id=? OR depends_on_task_id=?`).bind(id, id).run();
-        await env.DB.prepare(`DELETE FROM task_comments WHERE task_id=?`).bind(id).run();
+        await ryddTaskRelationer(env, id);
         await env.DB.prepare(`UPDATE tasks SET parent_task_id=NULL WHERE parent_task_id=?`).bind(id).run();
         await env.DB.prepare(`DELETE FROM tasks WHERE id=?`).bind(id).run();
         return json({ ok:true });
