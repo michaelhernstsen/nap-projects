@@ -47,10 +47,15 @@ tbody tr:last-child td{border-bottom:none}
 tr.taskrow{cursor:pointer}
 tr.taskrow:hover{background:var(--hover)}
 td.name-cell{min-width:220px}
-.name-wrap{display:flex;align-items:center;gap:2px}
+.name-wrap{display:flex;align-items:center;gap:6px}
+.name-text{font-size:13.5px;font-weight:500;padding:5px 4px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.editnamebtn{flex:none;width:22px;height:22px;border:none;background:var(--line);color:var(--muted);
+  border-radius:5px;cursor:pointer;font-size:11px;opacity:0;display:flex;align-items:center;justify-content:center}
+tr.taskrow:hover .editnamebtn{opacity:1}
+.editnamebtn:hover{background:var(--faint);color:#fff}
 .name-in{border:none;background:transparent;font-size:13.5px;font-weight:500;width:100%;
-  padding:5px 4px;border-radius:5px;color:var(--ink)}
-.name-in:hover,.name-in:focus{background:var(--hover);outline:none}
+  padding:5px 4px;border-radius:5px;color:var(--ink);background:var(--hover)}
+.name-in:focus{outline:none}
 
 /* Chips/pills - alt er en knap der aabner et popover, aldrig et nøgent OS-kontrol */
 .pillbtn{border:none;cursor:pointer;font-size:12px;font-weight:650;padding:4px 10px 4px 8px;border-radius:20px;
@@ -134,7 +139,11 @@ td.name-cell{min-width:220px}
 .subrow:hover{background:var(--hover)}
 .subrow.done .subname{color:var(--faint);text-decoration:line-through}
 .subcheck{width:16px;height:16px;flex:none;cursor:pointer}
-.subname{cursor:pointer;flex:1}
+.subname{flex:1}
+.subopen{flex:none;width:22px;height:22px;border:none;background:var(--line);color:var(--muted);
+  border-radius:5px;cursor:pointer;font-size:12px;opacity:0;display:flex;align-items:center;justify-content:center}
+.subrow:hover .subopen{opacity:1}
+.subopen:hover{background:var(--faint);color:#fff}
 .subadd input{width:100%;border:none;background:transparent;font-size:13.5px;padding:6px 4px;border-radius:6px;color:var(--muted)}
 .subadd input:hover,.subadd input:focus{background:var(--hover);outline:none;color:var(--ink)}
 
@@ -441,10 +450,9 @@ function render(){
     sortKey = k;
     render();
   });
-  wrap.querySelectorAll('.name-in').forEach(inp => {
-    inp.onclick = e => e.stopPropagation();
-    inp.onblur = () => saveTask(Number(inp.dataset.id), { name: inp.value.trim() || 'Uden navn' });
-    inp.onkeydown = e => { if(e.key === 'Enter') inp.blur(); };
+  wrap.querySelectorAll('.editnamebtn').forEach(btn => btn.onclick = e => {
+    e.stopPropagation();
+    startEditName(Number(btn.dataset.id), btn.previousElementSibling);
   });
   wrap.querySelectorAll('tr.taskrow').forEach(tr => tr.onclick = () => openPanel(Number(tr.dataset.id)));
   wrap.querySelectorAll('.addrow').forEach(el => el.onclick = () => addTask(Number(el.dataset.pid)));
@@ -485,7 +493,8 @@ function renderTable(p, tasks){
     const blockingNames = (t.blocking||[]).map(taskName).filter(Boolean);
     return '<tr class="taskrow" data-id="' + t.id + '">' +
       '<td class="name-cell"><div class="name-wrap">' +
-        '<input class="name-in" data-id="' + t.id + '" value="' + esc(t.name) + '"></div></td>' +
+        '<span class="name-text">' + esc(t.name) + '</span>' +
+        '<button class="editnamebtn" data-id="' + t.id + '" title="Omdøb">✎</button></div></td>' +
       '<td>' + pillBtn('status', t.id, t.status) + '</td>' +
       '<td>' + personBtn(t.id, t.assignee_id) + '</td>' +
       '<td>' + dateBtn(t.id, t.due_date, t.status) + '</td>' +
@@ -503,6 +512,22 @@ function renderTable(p, tasks){
     '</tr></thead><tbody>' + rows +
     '<tr><td class="addrow" data-pid="' + p.id + '" colspan="8">+ Ny opgave</td></tr>' +
     '</tbody></table></div>';
+}
+
+function startEditName(taskId, textEl){
+  const input = document.createElement('input');
+  input.className = 'name-in';
+  input.value = textEl.textContent;
+  input.dataset.id = taskId;
+  textEl.replaceWith(input);
+  input.focus();
+  input.select();
+  input.onclick = e => e.stopPropagation();
+  input.onblur = () => saveTask(taskId, { name: input.value.trim() || 'Uden navn' });
+  input.onkeydown = e => {
+    if(e.key === 'Enter') input.blur();
+    if(e.key === 'Escape') render();
+  };
 }
 
 function renderBoard(p){
@@ -599,7 +624,8 @@ function renderSubtasks(t){
     '<div class="sublist">' + kids.map(k =>
       '<div class="subrow' + (k.status==='Done'?' done':'') + '">' +
         '<input type="checkbox" class="subcheck" data-id="' + k.id + '"' + (k.status==='Done'?' checked':'') + '>' +
-        '<span class="subname" data-id="' + k.id + '">' + esc(k.name) + '</span>' +
+        '<span class="subname">' + esc(k.name) + '</span>' +
+        '<button class="subopen" data-id="' + k.id + '" title="Åbn sub-opgave">⤢</button>' +
       '</div>'
     ).join('') + '</div>' +
     '<div class="subadd"><input type="text" class="subaddinput" data-parent="' + t.id + '" data-project="' + t.project_id + '" placeholder="+ Tilføj sub-opgave"></div>';
@@ -609,7 +635,7 @@ function bindSubtaskControls(t){
   const el = document.getElementById('panelSubtasks');
   el.querySelectorAll('.subcheck').forEach(cb => cb.onchange = () =>
     saveTask(Number(cb.dataset.id), { status: cb.checked ? 'Done' : 'Not started' }));
-  el.querySelectorAll('.subname').forEach(s => s.onclick = () => openPanel(Number(s.dataset.id)));
+  el.querySelectorAll('.subopen').forEach(b => b.onclick = () => openPanel(Number(b.dataset.id)));
   const addInp = el.querySelector('.subaddinput');
   addInp.onkeydown = async e => {
     if(e.key === 'Enter' && addInp.value.trim()){
@@ -952,8 +978,8 @@ async function saveTask(id, patch){
 async function addTask(projectId){
   const r = await api('/api/tasks', { method:'POST', body: JSON.stringify({ project_id: projectId, name:'Ny opgave' }) });
   await loadAll();
-  const inp = document.querySelector('input.name-in[data-id="' + r.id + '"]');
-  if(inp){ inp.focus(); inp.select(); }
+  const btn = document.querySelector('.editnamebtn[data-id="' + r.id + '"]');
+  if(btn) startEditName(r.id, btn.previousElementSibling);
 }
 
 document.getElementById('newProject').onclick = async () => {
