@@ -111,7 +111,9 @@ tr.taskrow:hover .editnamebtn{opacity:1}
   cursor:pointer;font-size:15px;color:var(--muted)}
 .panel-close:hover{background:var(--hover)}
 .panel-body{flex:1;min-height:0;overflow-y:auto;padding:8px 40px 40px}
-.crumb{font-size:12.5px;color:var(--faint);margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.crumb{font-size:12.5px;color:var(--faint);margin-bottom:10px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--ink);text-decoration:underline}
 .panel-icon{font-size:38px;margin-bottom:8px}
 .panel-title{width:100%;border:none;font-size:26px;font-weight:700;letter-spacing:-.01em;
   padding:2px 4px;margin:0 0 18px -4px;border-radius:6px;color:var(--ink)}
@@ -584,8 +586,15 @@ function renderPanel(taskId){
   const t = STATE.tasks.find(x=>x.id===taskId);
   if(!t){ closePanel(); return; }
   const proj = projectOf(t);
-  document.getElementById('panelCrumb').innerHTML =
-    (proj ? esc(proj.icon||'📁') + ' ' + esc(proj.name) : '') + ' <span style="margin:0 2px">/</span> Opgave';
+  const parent = t.parent_task_id ? STATE.tasks.find(x => x.id === t.parent_task_id) : null;
+  const crumbEl = document.getElementById('panelCrumb');
+  crumbEl.innerHTML =
+    (proj ? esc(proj.icon||'📁') + ' ' + esc(proj.name) : '') +
+    (parent ? ' <span>/</span> <a href="#" class="crumblink" data-id="' + parent.id + '">' + esc(parent.name) + '</a>' : '') +
+    ' <span>/</span> Opgave';
+  if(parent){
+    crumbEl.querySelector('.crumblink').onclick = e => { e.preventDefault(); openPanel(parent.id); };
+  }
 
   const titleEl = document.getElementById('panelTitle');
   if(document.activeElement !== titleEl) titleEl.value = t.name;
