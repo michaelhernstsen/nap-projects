@@ -5,38 +5,52 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>NAP Projects</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700&display=swap" rel="stylesheet">
 <style>
-:root{--ink:#191919;--muted:#787774;--faint:#9b9a97;--line:#e9e9e7;--line2:#f1f1ef;--hover:#f5f5f4;
+:root{--ink:#1e293b;--muted:#64748b;--faint:#94a3b8;--line:#e2e8f0;--line2:#f1f5f9;--hover:#f1f5f9;
+  --page-bg:#f7fafc;--accent:#feb902;--accent-dark:#e0a400;
   --blue:#0b4a91;--bluebg:#dbeafe;--bluedot:#2f80ed;
   --green:#116631;--greenbg:#d7f3df;--greendot:#2ea043;
   --amber:#8a5c00;--amberbg:#fcecc4;--amberdot:#e0a020;
   --red:#9c1c14;--redbg:#fbdad7;--reddot:#e5484d;
   --gray:#787774;--graybg:#eeedec;--graydot:#9b9a97}
 *{box-sizing:border-box}
-body{margin:0;background:#fff;color:var(--ink);-webkit-font-smoothing:antialiased;
-  font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{margin:0;background:var(--page-bg);color:var(--ink);-webkit-font-smoothing:antialiased;
+  font:14px/1.5 "Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
 .top{max-width:1180px;margin:0 auto;padding:24px 24px 10px;display:flex;align-items:center;gap:10px}
 .mark{font-size:20px}
 .top .t{font-weight:700;font-size:15px}
 .top .s{color:var(--faint);font-size:13px}
 .top .sp{flex:1}
-.top .who{display:flex;align-items:center;gap:16px;font-size:12.5px;color:var(--muted)}
-.top .who a{color:var(--muted);text-decoration:none}
-.top .who a:hover{color:var(--ink);text-decoration:underline}
 main{max-width:1180px;margin:0 auto;padding:10px 24px 80px}
 .toolbar{display:flex;align-items:center;gap:10px;margin:14px 0 22px}
 .toolbar input[type=search]{flex:1;max-width:280px;padding:7px 10px;border:1px solid var(--line);
-  border-radius:7px;font-size:13px;background:var(--hover)}
-.btn{padding:7px 13px;border-radius:7px;border:1px solid var(--line);background:#fff;
+  border-radius:7px;font-size:13px;background:#fff}
+.btn{padding:8px 15px;border-radius:8px;border:1px solid var(--line);background:#fff;
   font-size:13px;font-weight:500;cursor:pointer;color:var(--ink)}
 .btn:hover{background:var(--hover)}
-.btn.pri{background:var(--ink);color:#fff;border-color:var(--ink)}
-.btn.pri:hover{background:#333}
+.btn.pri{background:var(--accent);color:var(--ink);border-color:var(--accent);font-weight:650;
+  box-shadow:0 4px 10px rgba(254,185,2,.32)}
+.btn.pri:hover{background:var(--accent-dark);border-color:var(--accent-dark);box-shadow:0 6px 14px rgba(254,185,2,.4)}
+
+/* Profil-menu i toppen */
+.profile{position:relative}
+.profilebtn{border:none;background:none;cursor:pointer;padding:0;border-radius:50%;line-height:0}
+.profilemenu{position:absolute;top:calc(100% + 10px);right:0;background:#fff;border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 12px 28px rgba(15,23,42,.12);padding:6px;min-width:210px;
+  display:none;z-index:50}
+.profilemenu.open{display:block}
+.profilename{padding:8px 10px 9px;font-weight:650;font-size:13px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.profilemenu a{display:block;padding:7px 10px;border-radius:6px;color:var(--ink);text-decoration:none;font-size:13px}
+.profilemenu a:hover{background:var(--hover)}
 .gopen{display:inline-flex;align-items:center;gap:8px;cursor:pointer;border-radius:6px;padding:2px 4px;margin:-2px -4px}
 .gopen:hover{background:var(--line2)}
 .gicon{font-size:16px}
 .gcount{color:var(--faint);font-weight:500;font-size:12.5px}
-.tablewrap{border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-top:8px}
+.tablewrap{background:#fff;border:1px solid rgba(15,23,42,.04);border-radius:10px;overflow:hidden;margin-top:8px;
+  box-shadow:0 1px 2px rgba(15,23,42,.04),0 1px 3px rgba(15,23,42,.06)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 thead tr{background:#fbfbfa}
 th{text-align:left;font-weight:600;color:var(--faint);font-size:11px;text-transform:uppercase;
@@ -71,6 +85,7 @@ tr.taskrow:hover .editnamebtn{opacity:1}
 .avatar{width:20px;height:20px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
   font-size:10px;font-weight:700}
 .avatar.sm{width:18px;height:18px;font-size:9.5px}
+.avatar.lg{width:30px;height:30px;font-size:12.5px}
 .datebtn{border:none;background:transparent;cursor:pointer;font-size:12.5px;color:var(--ink);
   padding:4px 7px;border-radius:6px}
 .datebtn:hover{background:var(--hover)}
@@ -180,21 +195,25 @@ tr.taskrow:hover .editnamebtn{opacity:1}
   cursor:pointer;color:var(--muted)}
 .viewtab.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06)}
 .board{display:flex;gap:14px;align-items:flex-start;overflow-x:auto;padding-bottom:8px}
-.boardcol{flex:none;width:270px;background:#fbfbfa;border:1px solid var(--line);border-radius:9px;padding:10px}
-.boardhead{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:650;margin-bottom:8px;padding:2px 4px}
+.boardcol{flex:none;width:270px;background:var(--line2);border-radius:10px;padding:10px}
+.boardhead{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;margin-bottom:8px;padding:2px 4px}
 .boardcards{display:flex;flex-direction:column;gap:8px;min-height:20px}
-.card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 11px;cursor:pointer}
-.card:hover{border-color:var(--faint);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.card{background:#fff;border:1px solid rgba(15,23,42,.04);border-radius:9px;padding:10px 11px;cursor:pointer;
+  box-shadow:0 1px 2px rgba(15,23,42,.04),0 1px 3px rgba(15,23,42,.06);transition:box-shadow .12s ease,transform .12s ease}
+.card:hover{box-shadow:0 6px 16px rgba(15,23,42,.09);transform:translateY(-1px)}
 .cardname{font-size:13.5px;font-weight:500;margin-bottom:8px}
 .cardmeta{display:flex;align-items:center;gap:2px;flex-wrap:wrap}
 
 /* Landingsside: "Mine projektmapper" */
-.folders{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:8px}
-.foldercard{position:relative;background:#fff;border:1px solid var(--line);border-radius:11px;padding:20px;
-  cursor:pointer;text-align:left;transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease}
-.foldercard:hover{border-color:var(--faint);box-shadow:0 4px 14px rgba(0,0,0,.06);transform:translateY(-1px)}
-.foldericon{font-size:30px;margin-bottom:10px}
-.foldername{font-weight:650;font-size:14.5px;margin-bottom:4px}
+.landinghead{display:flex;align-items:center;gap:16px;margin:6px 0 20px}
+.landinghead h1{font-size:20px;font-weight:700;margin:0;letter-spacing:-.01em}
+.folders{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.foldercard{position:relative;background:#fff;border:1px solid rgba(15,23,42,.04);border-radius:12px;padding:20px;
+  cursor:pointer;text-align:left;box-shadow:0 1px 2px rgba(15,23,42,.04),0 1px 3px rgba(15,23,42,.06);
+  transition:transform .12s ease,box-shadow .12s ease}
+.foldercard:hover{box-shadow:0 8px 20px rgba(15,23,42,.09);transform:translateY(-2px)}
+.foldericon{font-size:28px;margin-bottom:10px}
+.foldername{font-weight:700;font-size:15px;margin-bottom:4px}
 .folderstat{color:var(--faint);font-size:12.5px}
 .foldercard .delprojbtn{position:absolute;top:10px;right:10px;width:26px;height:26px;border:none;background:none;
   color:var(--faint);cursor:pointer;border-radius:6px;font-size:13px;opacity:0}
@@ -203,14 +222,17 @@ tr.taskrow:hover .editnamebtn{opacity:1}
 
 /* Header naar man er inde i ét projekt */
 .projhead{display:flex;align-items:center;gap:10px;margin:6px 0 14px}
-.projhead .gopen{font-weight:650;font-size:16px}
+.projhead .gopen{font-weight:700;font-size:16px}
 </style>
 </head>
 <body>
 <div class="top">
   <span class="mark">🗂️</span><span class="t">NAP</span><span class="s">Projekter</span>
   <div class="sp"></div>
-  <div class="who" id="who"></div>
+  <div class="profile">
+    <button class="profilebtn" id="profileBtn"></button>
+    <div class="profilemenu" id="profileMenu"></div>
+  </div>
 </div>
 <main>
   <div class="toolbar">
@@ -221,7 +243,6 @@ tr.taskrow:hover .editnamebtn{opacity:1}
       <button class="viewtab" id="viewBoard">Tavle</button>
     </div>
     <div class="sp"></div>
-    <button class="btn" id="newProject">+ Nyt projekt</button>
   </div>
   <div id="groups"></div>
 </main>
@@ -354,8 +375,11 @@ async function api(path, opts){
 async function loadAll(){
   const [me, all] = await Promise.all([ api('/api/me'), api('/api/all') ]);
   STATE = all;
-  document.getElementById('who').innerHTML =
-    '<span>' + esc(me.username) + '</span>' +
+  const c = avatarColor(me.username);
+  document.getElementById('profileBtn').innerHTML =
+    '<span class="avatar lg" style="background:' + c.bg + ';color:' + c.fg + '">' + esc(me.username[0].toUpperCase()) + '</span>';
+  document.getElementById('profileMenu').innerHTML =
+    '<div class="profilename">' + esc(me.username) + '</div>' +
     (me.isAdmin ? '<a href="/admin/users">Administrer brugere</a>' : '') +
     '<a href="/account/password">Skift adgangskode</a>' +
     '<a href="/logout">Log ud</a>';
@@ -463,15 +487,18 @@ function render(){
 
 function renderLanding(){
   const wrap = document.getElementById('groups');
-  wrap.innerHTML = '<div class="folders">' + STATE.projects.map(p => {
-    const count = STATE.tasks.filter(t => t.project_id === p.id && !t.parent_task_id).length;
-    return '<div class="foldercard" data-pid="' + p.id + '">' +
-      '<button class="delprojbtn" data-pid="' + p.id + '" title="Slet projekt">🗑</button>' +
-      '<div class="foldericon">' + esc(p.icon||'📁') + '</div>' +
-      '<div class="foldername">' + esc(p.name) + '</div>' +
-      '<div class="folderstat">' + count + ' opgave' + (count===1?'':'r') + '</div>' +
-    '</div>';
-  }).join('') + '</div>';
+  wrap.innerHTML =
+    '<div class="landinghead"><h1>Mine projektmapper</h1>' +
+      '<button class="btn pri" id="newProjectBtn">+ Nyt projekt</button></div>' +
+    '<div class="folders">' + STATE.projects.map(p => {
+      const count = STATE.tasks.filter(t => t.project_id === p.id && !t.parent_task_id).length;
+      return '<div class="foldercard" data-pid="' + p.id + '">' +
+        '<button class="delprojbtn" data-pid="' + p.id + '" title="Slet projekt">🗑</button>' +
+        '<div class="foldericon">' + esc(p.icon||'📁') + '</div>' +
+        '<div class="foldername">' + esc(p.name) + '</div>' +
+        '<div class="folderstat">' + count + ' opgave' + (count===1?'':'r') + '</div>' +
+      '</div>';
+    }).join('') + '</div>';
   wrap.querySelectorAll('.foldercard').forEach(c => c.onclick = () => { currentProjectId = Number(c.dataset.pid); render(); });
   wrap.querySelectorAll('.delprojbtn').forEach(b => b.onclick = async e => {
     e.stopPropagation();
@@ -481,6 +508,14 @@ function renderLanding(){
     await api('/api/projects/' + pid, { method:'DELETE' });
     await loadAll();
   });
+  document.getElementById('newProjectBtn').onclick = createProject;
+}
+
+async function createProject(){
+  const name = prompt('Projektnavn:');
+  if(!name) return;
+  await api('/api/projects', { method:'POST', body: JSON.stringify({ name }) });
+  await loadAll();
 }
 
 document.getElementById('backToFolders').onclick = () => {
@@ -489,6 +524,12 @@ document.getElementById('backToFolders').onclick = () => {
   document.getElementById('search').value = '';
   render();
 };
+
+document.getElementById('profileBtn').onclick = e => {
+  e.stopPropagation();
+  document.getElementById('profileMenu').classList.toggle('open');
+};
+document.addEventListener('click', () => document.getElementById('profileMenu').classList.remove('open'));
 
 function renderTable(p, tasks){
   const rows = tasks.map(t => {
@@ -990,13 +1031,6 @@ async function addTask(projectId){
   const btn = document.querySelector('.editnamebtn[data-id="' + r.id + '"]');
   if(btn) startEditName(r.id, btn.previousElementSibling);
 }
-
-document.getElementById('newProject').onclick = async () => {
-  const name = prompt('Projektnavn:');
-  if(!name) return;
-  await api('/api/projects', { method:'POST', body: JSON.stringify({ name }) });
-  await loadAll();
-};
 
 document.getElementById('search').oninput = e => { filterText = e.target.value; render(); };
 
